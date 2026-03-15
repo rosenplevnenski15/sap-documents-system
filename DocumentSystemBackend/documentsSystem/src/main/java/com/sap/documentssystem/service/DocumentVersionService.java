@@ -5,7 +5,10 @@ import com.sap.documentssystem.exceptions.DocumentNotFoundException;
 import com.sap.documentssystem.exceptions.InvalidVersionStateException;
 import com.sap.documentssystem.exceptions.VersionNotFoundException;
 import com.sap.documentssystem.mapper.VersionMapper;
-import com.sap.documentssystem.model.*;
+import com.sap.documentssystem.model.Document;
+import com.sap.documentssystem.model.DocumentVersion;
+import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.model.VersionStatus;
 import com.sap.documentssystem.repository.DocumentRepository;
 import com.sap.documentssystem.repository.DocumentVersionRepository;
 import com.sap.documentssystem.repository.UserRepository;
@@ -30,10 +33,7 @@ public class DocumentVersionService {
     private final AuditLogService auditLogService;
 
     private User getCurrentUser() {
-
-        Authentication auth =
-                SecurityContextHolder.getContext().getAuthentication();
-
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
 
         return userRepository.findByUsername(username)
@@ -41,10 +41,7 @@ public class DocumentVersionService {
     }
 
     @Transactional
-    public VersionResponse createVersion(UUID documentId,
-                                         String fileName,
-                                         String s3Url) {
-
+    public VersionResponse createVersion(UUID documentId, String fileName, String s3Url) {
         User createdBy = getCurrentUser();
 
         Document document = documentRepository.findById(documentId)
@@ -62,6 +59,7 @@ public class DocumentVersionService {
                 .fileName(fileName)
                 .s3Url(s3Url)
                 .status(VersionStatus.DRAFT)
+                .isActive(false)
                 .createdBy(createdBy)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -80,7 +78,6 @@ public class DocumentVersionService {
 
     @Transactional
     public VersionResponse submitForReview(UUID versionId) {
-
         User user = getCurrentUser();
 
         DocumentVersion version = versionRepository.findById(versionId)
@@ -106,21 +103,26 @@ public class DocumentVersionService {
 
     @Transactional
     public VersionResponse approveVersion(UUID versionId) {
-
         User reviewer = getCurrentUser();
 
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(VersionNotFoundException::new);
 
         if (version.getStatus() != VersionStatus.IN_REVIEW) {
-            throw new InvalidVersionStateException("Only IN_REVIEW can be approved");
+            throw new InvalidVersionStateException("Only IN_REVIEW versions can be approved");
         }
 
-        version.setStatus(VersionStatus.APPROVED);
-        version.setApprovedBy(reviewer);
-        version.setApprovedAt(LocalDateTime.now());
+        UUID documentId = version.getDocument().getId();
 
-        DocumentVersion saved = versionRepository.save(version);
+        versionRepository.deactivateOtherActiveVersions(documentId, versionId);
+        versionRepository.flush();
+
+        version.setStatus(VersionStatus.APPROVED);
+        version.setApprovedAt(LocalDateTime.now());
+        version.setApprovedBy(reviewer);
+        version.setIsActive(true);
+
+        DocumentVersion saved = versionRepository.saveAndFlush(version);
 
         auditLogService.log(
                 reviewer,
@@ -134,7 +136,6 @@ public class DocumentVersionService {
 
     @Transactional
     public VersionResponse rejectVersion(UUID versionId) {
-
         User reviewer = getCurrentUser();
 
         DocumentVersion version = versionRepository.findById(versionId)
@@ -159,9 +160,7 @@ public class DocumentVersionService {
     }
 
     public List<VersionResponse> getVersions(UUID documentId) {
-
-        return versionRepository
-                .findByDocument_IdOrderByVersionNumberDesc(documentId)
+        return versionRepository.findByDocument_IdOrderByVersionNumberDesc(documentId)
                 .stream()
                 .map(VersionMapper::toResponse)
                 .toList();

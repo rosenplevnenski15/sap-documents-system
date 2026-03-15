@@ -41,6 +41,10 @@ public class DocumentVersion {
     @Column(nullable = false)
     private VersionStatus status;
 
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;

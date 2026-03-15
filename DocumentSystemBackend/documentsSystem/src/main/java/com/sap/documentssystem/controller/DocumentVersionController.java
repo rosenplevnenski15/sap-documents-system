@@ -54,6 +54,7 @@ public class DocumentVersionController {
     }
 
     @GetMapping("/documents/{documentId}/versions")
+    @PreAuthorize("hasAnyRole('AUTHOR','ADMIN')")
     public List<VersionResponse> getVersions(@PathVariable UUID documentId) {
 
         return versionService.getVersions(documentId);

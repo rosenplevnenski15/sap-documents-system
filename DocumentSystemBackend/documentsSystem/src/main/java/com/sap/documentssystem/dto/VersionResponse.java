@@ -20,6 +20,8 @@ public class VersionResponse {
 
     private String status;
 
+    private Boolean isActive;
+
     private String createdBy;
 
     private LocalDateTime createdAt;

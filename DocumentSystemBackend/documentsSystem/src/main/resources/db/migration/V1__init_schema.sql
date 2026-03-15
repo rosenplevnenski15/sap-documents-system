@@ -31,6 +31,7 @@ CREATE TABLE document_versions (
                                    file_name VARCHAR(255) NOT NULL,
                                    s3_url TEXT NOT NULL,
                                    status version_status NOT NULL,
+                                   is_active BOOLEAN NOT NULL DEFAULT FALSE,
                                    created_by UUID NOT NULL REFERENCES users(id),
                                    created_at TIMESTAMP NOT NULL,
                                    approved_by UUID REFERENCES users(id),
@@ -60,3 +61,7 @@ CREATE INDEX idx_documents_created_by
 
 CREATE INDEX idx_audit_log_entity
     ON audit_log(entity_id);
+
+CREATE UNIQUE INDEX uq_one_active_version_per_document
+    ON document_versions(document_id)
+    WHERE is_active = TRUE;
