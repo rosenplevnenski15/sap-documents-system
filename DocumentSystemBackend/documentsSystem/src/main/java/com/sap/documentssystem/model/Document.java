@@ -18,6 +18,7 @@ import java.util.UUID;
 public class Document {
 
     @Id
+    @GeneratedValue
     private UUID id;
 
     @Column(nullable = false)
@@ -33,4 +34,9 @@ public class Document {
     @JsonIgnore
     @OneToMany(mappedBy = "document", fetch = FetchType.LAZY)
     private List<DocumentVersion> versions;
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

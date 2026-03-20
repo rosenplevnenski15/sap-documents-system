@@ -1,34 +1,38 @@
 package com.sap.documentssystem.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
+@RequestMapping("/api/test")
 public class TestController {
 
-    @GetMapping("/api/test/admin")
+    @GetMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
-    public String adminEndpoint() {
-        return "ADMIN ACCESS GRANTED";
+    public ResponseEntity<Map<String, String>> adminEndpoint() {
+        return ResponseEntity.ok(Map.of("message", "ADMIN ACCESS GRANTED"));
     }
 
-    @GetMapping("/api/test/author")
+    @GetMapping("/author")
     @PreAuthorize("hasRole('AUTHOR')")
-    public String authorEndpoint() {
-        return "AUTHOR ACCESS GRANTED";
+    public ResponseEntity<Map<String, String>> authorEndpoint() {
+        return ResponseEntity.ok(Map.of("message", "AUTHOR ACCESS GRANTED"));
     }
 
-    @GetMapping("/api/test/reviewer")
+    @GetMapping("/reviewer")
     @PreAuthorize("hasRole('REVIEWER')")
-    public String reviewerEndpoint() {
-        return "REVIEWER ACCESS GRANTED";
+    public ResponseEntity<Map<String, String>> reviewerEndpoint() {
+        return ResponseEntity.ok(Map.of("message", "REVIEWER ACCESS GRANTED"));
     }
 
-    @GetMapping("/api/test/reader")
+    @GetMapping("/reader")
     @PreAuthorize("hasRole('READER')")
-    public String readerEndpoint() {
-        return "READER ACCESS GRANTED";
+    public ResponseEntity<Map<String, String>> readerEndpoint() {
+        return ResponseEntity.ok(Map.of("message", "READER ACCESS GRANTED"));
     }
-
 }

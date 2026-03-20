@@ -2,13 +2,14 @@ package com.sap.documentssystem.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class CreateDocumentRequest {
 
     @NotBlank(message = "Title is required")
-    @Size(max = 255, message = "Title must be less than 255 characters")
+    @Size(min = 3, max = 255, message = "Title must be between 3 and 255 characters")
     private String title;
-
 }

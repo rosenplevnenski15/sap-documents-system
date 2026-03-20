@@ -32,4 +32,13 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
           and dv.id <> :versionId
     """)
     int deactivateOtherActiveVersions(UUID documentId, UUID versionId);
+
+    List<DocumentVersion> findByDocument_IdAndIsActiveTrueAndStatus(
+            UUID documentId,
+            VersionStatus status
+    );
+    List<DocumentVersion> findByDocument_IdAndStatus(
+            UUID documentId,
+            VersionStatus status
+    );
 }

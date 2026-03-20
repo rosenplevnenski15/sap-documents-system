@@ -1,6 +1,9 @@
 package com.sap.documentssystem.security;
 
+import com.sap.documentssystem.exceptions.JwtAuthenticationException;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
@@ -26,7 +29,6 @@ public class JwtService {
     }
 
     public String generateToken(String username) {
-
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
@@ -36,20 +38,34 @@ public class JwtService {
     }
 
     public String extractUsername(String token) {
-
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
-        return claims.getSubject();
+        return extractAllClaims(token).getSubject();
     }
 
-    public boolean isTokenValid(String token, String username) {
+    public void validateTokenOrThrow(String token, String expectedUsername) {
+        Claims claims = extractAllClaims(token);
 
-        String extractedUsername = extractUsername(token);
+        String extractedUsername = claims.getSubject();
 
-        return extractedUsername.equals(username);
+        if (!extractedUsername.equals(expectedUsername)) {
+            throw new JwtAuthenticationException("JWT username mismatch");
+        }
+
+        if (claims.getExpiration().before(new Date())) {
+            throw new JwtAuthenticationException("JWT token expired");
+        }
+    }
+
+    private Claims extractAllClaims(String token) {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException ex) {
+            throw new JwtAuthenticationException("JWT token expired", ex);
+        } catch (JwtException | IllegalArgumentException ex) {
+            throw new JwtAuthenticationException("Invalid JWT token", ex);
+        }
     }
 }

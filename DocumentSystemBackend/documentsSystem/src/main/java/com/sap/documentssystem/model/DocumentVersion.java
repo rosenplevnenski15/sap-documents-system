@@ -11,7 +11,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "document_versions")
+@Table(
+        name = "document_versions",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"document_id", "version_number"})
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,6 +23,7 @@ import java.util.UUID;
 public class DocumentVersion {
 
     @Id
+    @GeneratedValue
     private UUID id;
 
     @JsonIgnore
@@ -28,7 +32,7 @@ public class DocumentVersion {
     private Document document;
 
     @Column(name = "version_number", nullable = false)
-    private Integer versionNumber;
+    private int versionNumber;
 
     @Column(name = "file_name", nullable = false)
     private String fileName;
@@ -37,13 +41,12 @@ public class DocumentVersion {
     private String s3Url;
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false)
-    private VersionStatus status;
+    private VersionStatus status=VersionStatus.DRAFT;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private Boolean isActive = false;
+    private boolean isActive = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
@@ -59,6 +62,13 @@ public class DocumentVersion {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = VersionStatus.DRAFT;
+        }
+    }
 
 
 }

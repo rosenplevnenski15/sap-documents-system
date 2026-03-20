@@ -2,14 +2,11 @@ package com.sap.documentssystem.service;
 
 import com.sap.documentssystem.dto.DocumentResponse;
 import com.sap.documentssystem.mapper.DocumentMapper;
+import com.sap.documentssystem.model.AuditAction;
 import com.sap.documentssystem.model.Document;
 import com.sap.documentssystem.model.User;
 import com.sap.documentssystem.repository.DocumentRepository;
-import com.sap.documentssystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,23 +18,17 @@ import java.util.UUID;
 public class DocumentService {
 
     private final DocumentRepository documentRepository;
-    private final UserRepository userRepository;
     private final AuditLogService auditService;
-
+    private final CurrentUserService currentUserService;
+    private final AuthorizationService authorizationService;
 
     @Transactional
     public DocumentResponse createDocument(String title) {
 
-        Authentication auth =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        String username = auth.getName();
-
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        User user = currentUserService.getCurrentUser();
+        authorizationService.canCreateDocument(user);
 
         Document document = Document.builder()
-                .id(UUID.randomUUID())
                 .title(title)
                 .createdBy(user)
                 .createdAt(LocalDateTime.now())
@@ -47,9 +38,10 @@ public class DocumentService {
 
         auditService.log(
                 user,
-                "CREATE_DOCUMENT",
+                AuditAction.CREATE_DOCUMENT,
                 "DOCUMENT",
-                document.getId()
+                document.getId(),
+                null
         );
 
         return DocumentMapper.toResponse(document);

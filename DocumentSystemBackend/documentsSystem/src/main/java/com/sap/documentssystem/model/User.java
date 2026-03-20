@@ -17,21 +17,24 @@ import java.util.UUID;
 public class User {
 
     @Id
+    @GeneratedValue
     private UUID id;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, length = 50)
     private String username;
 
     @Column(nullable = false)
     private String password;
 
-    private String role;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role=Role.READER;
 
     @Builder.Default
     @Column(name = "is_active")
-    private Boolean isActive=true;
+    private boolean isActive=true;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at",nullable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
@@ -40,4 +43,9 @@ public class User {
     @JsonIgnore
     @OneToMany(mappedBy = "createdBy",fetch = FetchType.LAZY)
     private List<Document> documents;
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

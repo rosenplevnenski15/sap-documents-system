@@ -13,7 +13,7 @@ public class VersionMapper {
                 .versionNumber(version.getVersionNumber())
                 .fileName(version.getFileName())
                 .status(version.getStatus().name())
-                .isActive(version.getIsActive())
+                .isActive(version.isActive())
                 .createdBy(version.getCreatedBy().getUsername())
                 .createdAt(version.getCreatedAt())
                 .approvedBy(version.getApprovedBy()!=null

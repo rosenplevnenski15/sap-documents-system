@@ -1,35 +1,26 @@
 package com.sap.documentssystem.controller;
 
-import com.sap.documentssystem.service.S3Service;
+import com.sap.documentssystem.service.FileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
 public class FileController {
 
-    private final S3Service s3Service;
+    private final FileService fileService;
 
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('AUTHOR','ADMIN')")
-    public String uploadFile(@RequestParam MultipartFile file) throws Exception {
+    public ResponseEntity<String> uploadFile(@RequestParam MultipartFile file) {
 
-        String fileName = UUID.randomUUID() + "-" + file.getOriginalFilename();
+        String url = fileService.upload(file);
 
-        Path tempFile = Files.createTempFile("upload-", fileName);
-        Files.write(tempFile, file.getBytes());
-
-        String url = s3Service.uploadFile(fileName, tempFile);
-
-        Files.delete(tempFile);
-
-        return url;
+        return ResponseEntity.status(HttpStatus.CREATED).body(url);
     }
 }

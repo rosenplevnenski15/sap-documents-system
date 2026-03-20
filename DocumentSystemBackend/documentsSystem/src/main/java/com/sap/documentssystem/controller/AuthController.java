@@ -1,9 +1,11 @@
 package com.sap.documentssystem.controller;
 
 import com.sap.documentssystem.dto.LoginRequest;
-import com.sap.documentssystem.security.JwtService;
+import com.sap.documentssystem.dto.LoginResponse;
+import com.sap.documentssystem.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -11,19 +13,13 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
+    private final AuthService authService;
 
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
-        );
+        LoginResponse response = authService.login(request);
 
-        return jwtService.generateToken(request.getUsername());
+        return ResponseEntity.ok(response);
     }
 }

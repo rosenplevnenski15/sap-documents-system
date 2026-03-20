@@ -1,24 +1,20 @@
 package com.sap.documentssystem.service;
 
+import com.sap.documentssystem.dto.CreateVersionRequest;
 import com.sap.documentssystem.dto.VersionResponse;
 import com.sap.documentssystem.exceptions.DocumentNotFoundException;
 import com.sap.documentssystem.exceptions.InvalidVersionStateException;
 import com.sap.documentssystem.exceptions.VersionNotFoundException;
 import com.sap.documentssystem.mapper.VersionMapper;
-import com.sap.documentssystem.model.Document;
-import com.sap.documentssystem.model.DocumentVersion;
-import com.sap.documentssystem.model.User;
-import com.sap.documentssystem.model.VersionStatus;
+import com.sap.documentssystem.model.*;
 import com.sap.documentssystem.repository.DocumentRepository;
 import com.sap.documentssystem.repository.DocumentVersionRepository;
-import com.sap.documentssystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -29,56 +25,66 @@ public class DocumentVersionService {
 
     private final DocumentRepository documentRepository;
     private final DocumentVersionRepository versionRepository;
-    private final UserRepository userRepository;
     private final AuditLogService auditLogService;
-
-    private User getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = auth.getName();
-
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-    }
+    private final CurrentUserService currentUserService;
+    private final AuthorizationService authorizationService;
+    private final FileService fileService;
 
     @Transactional
-    public VersionResponse createVersion(UUID documentId, String fileName, String s3Url) {
-        User createdBy = getCurrentUser();
+    public VersionResponse createVersion(UUID documentId, MultipartFile file) {
 
-        Document document = documentRepository.findById(documentId)
-                .orElseThrow(DocumentNotFoundException::new);
+        User user = currentUserService.getCurrentUser();
+        authorizationService.canCreateVersion(user);
 
-        Integer lastVersion = versionRepository
-                .findTopByDocument_IdOrderByVersionNumberDesc(documentId)
-                .map(DocumentVersion::getVersionNumber)
-                .orElse(0);
+        String fileUrl = null;
 
-        DocumentVersion version = DocumentVersion.builder()
-                .id(UUID.randomUUID())
-                .document(document)
-                .versionNumber(lastVersion + 1)
-                .fileName(fileName)
-                .s3Url(s3Url)
-                .status(VersionStatus.DRAFT)
-                .isActive(false)
-                .createdBy(createdBy)
-                .createdAt(LocalDateTime.now())
-                .build();
+        try {
+            // 1. upload to S3
+            fileUrl = fileService.upload(file);
 
-        DocumentVersion saved = versionRepository.save(version);
+            Document document = documentRepository.findById(documentId)
+                    .orElseThrow(DocumentNotFoundException::new);
 
-        auditLogService.log(
-                createdBy,
-                "CREATE_VERSION",
-                "DOCUMENT_VERSION",
-                saved.getId()
-        );
+            Integer lastVersion = versionRepository
+                    .findTopByDocument_IdOrderByVersionNumberDesc(documentId)
+                    .map(DocumentVersion::getVersionNumber)
+                    .orElse(0);
 
-        return VersionMapper.toResponse(saved);
+            DocumentVersion version = DocumentVersion.builder()
+                    .document(document)
+                    .versionNumber(lastVersion + 1)
+                    .fileName(file.getOriginalFilename())
+                    .s3Url(fileUrl)
+                    .status(VersionStatus.DRAFT)
+                    .createdBy(user)
+                    .build();
+
+            DocumentVersion saved = versionRepository.save(version);
+
+            auditLogService.log(
+                    user,
+                    AuditAction.CREATE_VERSION,
+                    "VERSION",
+                    saved.getId()
+            );
+
+            return VersionMapper.toResponse(saved);
+
+        } catch (Exception ex) {
+
+
+            if (fileUrl != null) {
+                fileService.delete(fileUrl);
+            }
+
+            throw ex;
+        }
     }
 
     @Transactional
     public VersionResponse submitForReview(UUID versionId) {
-        User user = getCurrentUser();
+        User user = currentUserService.getCurrentUser();
+        authorizationService.canSubmitForReview(user);
 
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(VersionNotFoundException::new);
@@ -93,8 +99,8 @@ public class DocumentVersionService {
 
         auditLogService.log(
                 user,
-                "SUBMIT_VERSION",
-                "DOCUMENT_VERSION",
+                AuditAction.SUBMIT_FOR_REVIEW,
+                "VERSION",
                 saved.getId()
         );
 
@@ -103,7 +109,8 @@ public class DocumentVersionService {
 
     @Transactional
     public VersionResponse approveVersion(UUID versionId) {
-        User reviewer = getCurrentUser();
+        User reviewer = currentUserService.getCurrentUser();
+        authorizationService.canApprove(reviewer);
 
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(VersionNotFoundException::new);
@@ -120,14 +127,14 @@ public class DocumentVersionService {
         version.setStatus(VersionStatus.APPROVED);
         version.setApprovedAt(LocalDateTime.now());
         version.setApprovedBy(reviewer);
-        version.setIsActive(true);
+        version.setActive(true);
 
         DocumentVersion saved = versionRepository.saveAndFlush(version);
 
         auditLogService.log(
                 reviewer,
-                "APPROVE_VERSION",
-                "DOCUMENT_VERSION",
+                AuditAction.APPROVE_VERSION,
+                "VERSION",
                 saved.getId()
         );
 
@@ -136,7 +143,8 @@ public class DocumentVersionService {
 
     @Transactional
     public VersionResponse rejectVersion(UUID versionId) {
-        User reviewer = getCurrentUser();
+        User reviewer = currentUserService.getCurrentUser();
+        authorizationService.canReject(reviewer);
 
         DocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(VersionNotFoundException::new);
@@ -151,8 +159,8 @@ public class DocumentVersionService {
 
         auditLogService.log(
                 reviewer,
-                "REJECT_VERSION",
-                "DOCUMENT_VERSION",
+                AuditAction.REJECT_VERSION,
+                "VERSION",
                 saved.getId()
         );
 
@@ -160,9 +168,99 @@ public class DocumentVersionService {
     }
 
     public List<VersionResponse> getVersions(UUID documentId) {
+
+        User user = currentUserService.getCurrentUser();
+
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(DocumentNotFoundException::new);
+
+
+        if (user.getRole() == Role.AUTHOR &&
+                !document.getCreatedBy().getId().equals(user.getId())) {
+
+            throw new RuntimeException("Authors can only view their own documents");
+        }
+
+
+        if (user.getRole() == Role.READER) {
+            return versionRepository
+                    .findByDocument_IdAndIsActiveTrueAndStatus(documentId, VersionStatus.APPROVED)
+                    .stream()
+                    .map(VersionMapper::toResponse)
+                    .toList();
+        }
+
+
+        if (user.getRole() == Role.REVIEWER) {
+            return versionRepository
+                    .findByDocument_IdAndStatus(documentId, VersionStatus.IN_REVIEW)
+                    .stream()
+                    .map(VersionMapper::toResponse)
+                    .toList();
+        }
+
+
         return versionRepository.findByDocument_IdOrderByVersionNumberDesc(documentId)
                 .stream()
                 .map(VersionMapper::toResponse)
                 .toList();
     }
+
+
+
+
+    public VersionResponse getActiveVersion(UUID documentId) {
+        User user = currentUserService.getCurrentUser();
+        authorizationService.canRead(user);
+
+        DocumentVersion version = versionRepository
+                .findByDocument_IdAndIsActiveTrue(documentId)
+                .orElseThrow(() -> new VersionNotFoundException("Active version not found"));
+
+        if (version.getStatus() != VersionStatus.APPROVED) {
+            throw new InvalidVersionStateException("Only approved versions can be read");
+        }
+
+        return VersionMapper.toResponse(version);
+    }
+
+    @Transactional
+    public VersionResponse updateDraft(UUID versionId, String fileName, String s3Url) {
+
+        User user = currentUserService.getCurrentUser();
+
+
+        authorizationService.canEditDraft(user);
+
+        DocumentVersion version = versionRepository.findById(versionId)
+                .orElseThrow(VersionNotFoundException::new);
+
+
+        if (version.getStatus() != VersionStatus.DRAFT) {
+            throw new InvalidVersionStateException("Only DRAFT versions can be edited");
+        }
+
+
+        if (user.getRole() == Role.AUTHOR &&
+                !version.getCreatedBy().getId().equals(user.getId())) {
+
+            throw new RuntimeException("Authors can edit only their own drafts");
+        }
+
+        version.setFileName(fileName);
+        version.setS3Url(s3Url);
+
+        DocumentVersion saved = versionRepository.save(version);
+
+        auditLogService.log(
+                user,
+                AuditAction.EDIT_DRAFT,
+                "VERSION",
+                saved.getId()
+        );
+
+        return VersionMapper.toResponse(saved);
+    }
+
+
 }

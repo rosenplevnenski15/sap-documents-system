@@ -1,22 +1,22 @@
 package com.sap.documentssystem.config;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.beans.factory.annotation.Value;
-
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.time.Duration;
+
 @Configuration
+@Slf4j
 public class S3Config {
-
-    @Value("${aws.accessKey}")
-    private String accessKey;
-
-    @Value("${aws.secretKey}")
-    private String secretKey;
 
     @Value("${aws.region}")
     private String region;
@@ -24,14 +24,26 @@ public class S3Config {
     @Bean
     public S3Client s3Client() {
 
-        AwsBasicCredentials credentials =
-                AwsBasicCredentials.create(accessKey, secretKey);
 
         return S3Client.builder()
                 .region(Region.of(region))
-                .credentialsProvider(
-                        StaticCredentialsProvider.create(credentials)
+
+
+                .credentialsProvider(DefaultCredentialsProvider.create())
+
+
+                .httpClientBuilder(
+                        UrlConnectionHttpClient.builder()
                 )
+
+
+                .overrideConfiguration(
+                        ClientOverrideConfiguration.builder()
+                                .apiCallTimeout(Duration.ofSeconds(10))
+                                .apiCallAttemptTimeout(Duration.ofSeconds(5))
+                                .build()
+                )
+
                 .build();
     }
 }
