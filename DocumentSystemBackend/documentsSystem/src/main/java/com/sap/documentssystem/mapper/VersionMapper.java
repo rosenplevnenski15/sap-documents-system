@@ -3,6 +3,8 @@ package com.sap.documentssystem.mapper;
 import com.sap.documentssystem.dto.VersionResponse;
 import com.sap.documentssystem.model.DocumentVersion;
 
+import javax.print.Doc;
+
 public class VersionMapper {
 
     public static VersionResponse toResponse(DocumentVersion version) {
