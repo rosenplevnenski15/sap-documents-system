@@ -1,0 +1,26 @@
+package com.sap.documentssystem.model;
+
+public enum AuditAction {
+    USER_REGISTERED,
+    USER_ROLE_CHANGED,
+    USER_DEACTIVATED,
+
+    CREATE_DOCUMENT,
+    UPDATE_DOCUMENT,
+    DELETE_DOCUMENT,
+
+    CREATE_VERSION,
+    EDIT_DRAFT,
+    SUBMIT_FOR_REVIEW,
+
+    APPROVE_VERSION,
+    REJECT_VERSION,
+
+    ADD_COMMENT,
+
+    DOWNLOAD_DOCUMENT,
+    EXPORT_DOCUMENT,
+
+    LOGIN,
+    LOGOUT
+}
