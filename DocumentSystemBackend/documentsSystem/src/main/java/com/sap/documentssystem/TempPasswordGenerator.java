@@ -6,7 +6,7 @@ public class TempPasswordGenerator {
 
     public static void main(String[] args) {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        String rawPassword = "reader123";
+        String rawPassword = "admin123";
         String encodedPassword = encoder.encode(rawPassword);
         System.out.println(encodedPassword);
     }

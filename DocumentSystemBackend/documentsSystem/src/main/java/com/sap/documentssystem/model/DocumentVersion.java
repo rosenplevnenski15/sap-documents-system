@@ -40,9 +40,13 @@ public class DocumentVersion {
     @Column(name = "s3_url", nullable = false)
     private String s3Url;
 
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", columnDefinition = "version_status")
+    @Builder.Default
     private VersionStatus status=VersionStatus.DRAFT;
+
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
@@ -67,6 +68,25 @@ public class S3Service {
         } catch (Exception ex) {
             log.error("Failed to delete file from S3: {}", fileUrl, ex);
 
+        }
+    }
+    public String downloadFileAsText(String fileUrl) {
+
+        try {
+            String key = extractKeyFromUrl(fileUrl);
+
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            ResponseInputStream<GetObjectResponse> response =
+                    s3Client.getObject(request);
+
+            return new String(response.readAllBytes());
+
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to download file from S3", ex);
         }
     }
 

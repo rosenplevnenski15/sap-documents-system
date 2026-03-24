@@ -1,5 +1,6 @@
 package com.sap.documentssystem.service;
 
+import com.sap.documentssystem.exceptions.AccessDeniedException;
 import com.sap.documentssystem.model.Role;
 import com.sap.documentssystem.model.User;
 import org.springframework.stereotype.Service;
@@ -49,13 +50,19 @@ public class AuthorizationService {
         }
     }
 
+    public void canCompare(User user) {
+        if (user.getRole() != Role.ADMIN && user.getRole() != Role.AUTHOR && user.getRole() != Role.REVIEWER) {
+            throw forbidden("Only REVIEWER, AUTHOR or ADMIN can compare versions");
+        }
+    }
+
     public void canRead(User user) {
         if (user.getRole() == null) {
             throw forbidden("Invalid user role");
         }
     }
 
-    private RuntimeException forbidden(String message) {
-        return new RuntimeException(message);
+    private AccessDeniedException forbidden(String message) {
+        return new AccessDeniedException(message);
     }
 }

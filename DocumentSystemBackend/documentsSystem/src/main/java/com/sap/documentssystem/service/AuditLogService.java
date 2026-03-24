@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -20,7 +22,7 @@ public class AuditLogService {
                     AuditAction action,
                     String entityType,
                     UUID entityId,
-                    String details) {
+                    Map<String,Object> details) {
 
         AuditLog log = AuditLog.builder()
                 .user(user)
@@ -42,7 +44,7 @@ public class AuditLogService {
                .action(action)
                .entityType(entityType)
                .entityId(entityId)
-               .details(null)
+               .details(new HashMap<>())
                .createdAt(LocalDateTime.now())
                .build();
 

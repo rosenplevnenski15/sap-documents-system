@@ -1,5 +1,10 @@
 package com.sap.documentssystem.service;
 
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.element.Paragraph;
 import com.sap.documentssystem.dto.CreateVersionRequest;
 import com.sap.documentssystem.dto.VersionResponse;
 import com.sap.documentssystem.exceptions.DocumentNotFoundException;
@@ -9,14 +14,18 @@ import com.sap.documentssystem.mapper.VersionMapper;
 import com.sap.documentssystem.model.*;
 import com.sap.documentssystem.repository.DocumentRepository;
 import com.sap.documentssystem.repository.DocumentVersionRepository;
+import com.sap.documentssystem.exceptions.AccessDeniedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.AccessDeniedException;
+
+
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -29,6 +38,7 @@ public class DocumentVersionService {
     private final CurrentUserService currentUserService;
     private final AuthorizationService authorizationService;
     private final FileService fileService;
+    private final S3Service s3Service;
 
     @Transactional
     public VersionResponse createVersion(UUID documentId, MultipartFile file) {
@@ -225,42 +235,203 @@ public class DocumentVersionService {
     }
 
     @Transactional
-    public VersionResponse updateDraft(UUID versionId, String fileName, String s3Url) {
+    public VersionResponse updateDraftFile(UUID versionId, MultipartFile file)  {
 
         User user = currentUserService.getCurrentUser();
-
-
         authorizationService.canEditDraft(user);
 
         DocumentVersion version = versionRepository.findById(versionId)
-                .orElseThrow(VersionNotFoundException::new);
+                .orElseThrow(() -> new VersionNotFoundException());
 
 
         if (version.getStatus() != VersionStatus.DRAFT) {
-            throw new InvalidVersionStateException("Only DRAFT versions can be edited");
+            throw new InvalidVersionStateException("Only DRAFT can be edited");
         }
 
 
         if (user.getRole() == Role.AUTHOR &&
                 !version.getCreatedBy().getId().equals(user.getId())) {
-
-            throw new RuntimeException("Authors can edit only their own drafts");
+            throw new AccessDeniedException("You can edit only your own drafts");
         }
 
-        version.setFileName(fileName);
-        version.setS3Url(s3Url);
+        String oldUrl = version.getS3Url();
 
-        DocumentVersion saved = versionRepository.save(version);
+
+        String newUrl = null;
+
+        try {
+            newUrl = fileService.upload(file);
+
+            version.setS3Url(newUrl);
+            version.setFileName(file.getOriginalFilename());
+
+            fileService.delete(oldUrl);
+
+        } catch (Exception ex) {
+
+            if (newUrl != null) {
+                fileService.delete(newUrl);
+            }
+
+            throw ex;
+        }
+
 
         auditLogService.log(
                 user,
                 AuditAction.EDIT_DRAFT,
                 "VERSION",
-                saved.getId()
+                versionId,
+                Map.of(
+                        "oldFile", oldUrl,
+                        "newFile", newUrl
+                )
         );
 
-        return VersionMapper.toResponse(saved);
+        return VersionMapper.toResponse(version);
+    }
+    public String compare(UUID v1, UUID v2) {
+
+
+        DocumentVersion version1 = versionRepository.findById(v1)
+                .orElseThrow(() -> new VersionNotFoundException("Version 1 not found"));
+
+        DocumentVersion version2 = versionRepository.findById(v2)
+                .orElseThrow(() -> new VersionNotFoundException("Version 2 not found"));
+
+
+        User user = currentUserService.getCurrentUser();
+        authorizationService.canCompare(user);
+
+        if (user.getRole() == Role.AUTHOR &&
+                !version1.getDocument().getCreatedBy().getId().equals(user.getId())) {
+            throw new AccessDeniedException("You can compare only your documents");
+        }
+
+        if (user.getRole() == Role.READER) {
+            throw new AccessDeniedException("Readers cannot compare versions");
+        }
+
+
+        if (v1.equals(v2)) {
+            throw new IllegalArgumentException("Cannot compare the same version");
+        }
+
+
+        if (!version1.getFileName().endsWith(".txt") ||
+                !version2.getFileName().endsWith(".txt")) {
+            throw new IllegalArgumentException("Only TXT files can be compared");
+        }
+
+
+        String text1 = s3Service.downloadFileAsText(version1.getS3Url());
+        String text2 = s3Service.downloadFileAsText(version2.getS3Url());
+
+        List<String> original = List.of(text1.split("\n"));
+        List<String> revised = List.of(text2.split("\n"));
+
+
+        Patch<String> patch = DiffUtils.diff(original, revised);
+
+
+        auditLogService.log(
+                user,
+                AuditAction.DOWNLOAD_DOCUMENT,
+                "VERSION_COMPARE",
+                version1.getId(),
+                Map.of(
+                        "version1", v1,
+                        "version2", v2
+                )
+        );
+
+
+        return patch.getDeltas().toString();
+    }
+    public String compareLatest(UUID documentId) {
+
+        User user = currentUserService.getCurrentUser();
+
+
+        if (user.getRole() == Role.READER) {
+            throw new AccessDeniedException("Readers cannot compare versions");
+        }
+
+
+        DocumentVersion active = versionRepository
+                .findByDocument_IdAndIsActiveTrue(documentId)
+                .orElseThrow(() -> new VersionNotFoundException("Active version not found"));
+
+
+        DocumentVersion inReview = versionRepository
+                .findTopByDocument_IdAndStatusOrderByVersionNumberDesc(
+                        documentId,
+                        VersionStatus.IN_REVIEW
+                )
+                .orElseThrow(() -> new VersionNotFoundException("No version in review"));
+
+
+        if (user.getRole() == Role.AUTHOR &&
+                !active.getDocument().getCreatedBy().getId().equals(user.getId())) {
+            throw new AccessDeniedException("You can compare only your documents");
+        }
+
+
+        if (!active.getFileName().endsWith(".txt") ||
+                !inReview.getFileName().endsWith(".txt")) {
+            throw new IllegalArgumentException("Only TXT files supported");
+        }
+
+        return compare(active.getId(), inReview.getId());
     }
 
+    public byte[] exportToPdf(UUID versionId) {
+
+        User user = currentUserService.getCurrentUser();
+        authorizationService.canRead(user);
+
+        DocumentVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() -> new VersionNotFoundException("Version not found"));
+
+
+        if (version.getStatus() != VersionStatus.APPROVED) {
+            throw new InvalidVersionStateException("Only APPROVED versions can be exported");
+        }
+
+
+        if (!version.getFileName().endsWith(".txt")) {
+            throw new IllegalArgumentException("Only TXT files can be exported to PDF");
+        }
+
+        try {
+
+
+            String text = s3Service.downloadFileAsText(version.getS3Url());
+
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+            PdfWriter writer = new PdfWriter(out);
+            PdfDocument pdf = new PdfDocument(writer);
+            com.itextpdf.layout.Document document = new com.itextpdf.layout.Document(pdf);
+
+            document.add(new Paragraph(text));
+
+            document.close();
+
+
+            auditLogService.log(
+                    user,
+                    AuditAction.EXPORT_DOCUMENT,
+                    "VERSION",
+                    versionId
+            );
+
+            return out.toByteArray();
+
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to export PDF", ex);
+        }
+    }
 
 }
