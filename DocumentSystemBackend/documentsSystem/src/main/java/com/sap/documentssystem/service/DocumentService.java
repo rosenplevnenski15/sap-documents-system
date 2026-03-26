@@ -7,12 +7,18 @@ import com.sap.documentssystem.model.*;
 import com.sap.documentssystem.repository.DocumentRepository;
 import com.sap.documentssystem.repository.DocumentVersionRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class DocumentService {
@@ -37,12 +43,12 @@ public class DocumentService {
         String fileUrl = null;
 
         try {
-            // 1. Upload file to S3
+
 
             fileUrl = fileService.upload(file);
 
 
-            // 2. Create document
+
             Document document = Document.builder()
                     .title(title)
                     .createdBy(user)
@@ -51,7 +57,7 @@ public class DocumentService {
 
             documentRepository.save(document);
 
-            // 3. Create VERSION 1 (DRAFT)
+
             DocumentVersion version = DocumentVersion.builder()
                     .document(document)
                     .versionNumber(1)
@@ -64,26 +70,29 @@ public class DocumentService {
 
             versionRepository.save(version);
 
-            // 4. Audit
+
             auditService.log(
                     user,
                     AuditAction.CREATE_DOCUMENT,
                     "DOCUMENT",
-                    document.getId()
+                    document.getId(),
+                    Map.of("title",document.getTitle())
             );
 
             auditService.log(
                     user,
                     AuditAction.CREATE_VERSION,
                     "VERSION",
-                    version.getId()
+                    version.getId(),
+                    Map.of("versionNumber",version.getVersionNumber(),
+                            "fileName",version.getFileName())
             );
 
             return DocumentMapper.toResponse(document);
 
         } catch (Exception ex) {
 
-            // rollback S3 ако DB fail
+
             if (fileUrl != null) {
                 fileService.delete(fileUrl);
             }
@@ -91,4 +100,25 @@ public class DocumentService {
             throw ex;
         }
     }
+
+    @Transactional(readOnly = true)
+    public Page<DocumentResponse> listDocuments(String query, boolean createdByMe, Pageable pageable) {
+        String normalizedQuery = query == null ? "" : query.trim();
+        User currentUser = currentUserService.getCurrentUser();
+        UUID userId = currentUser.getId();
+
+        Page<Document> documents;
+        if (createdByMe && !normalizedQuery.isEmpty()) {
+            documents = documentRepository.searchByCreatorAndQuery(userId, normalizedQuery, pageable);
+        } else if (createdByMe) {
+            documents = documentRepository.findByCreatedBy_Id(userId, pageable);
+        } else if (!normalizedQuery.isEmpty()) {
+            documents = documentRepository.findByTitleContainingIgnoreCase(normalizedQuery, pageable);
+        } else {
+            documents = documentRepository.findAll(pageable);
+        }
+
+        return documents.map(DocumentMapper::toResponse);
+    }
+
 }
