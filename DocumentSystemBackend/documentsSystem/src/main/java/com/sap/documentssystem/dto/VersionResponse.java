@@ -12,8 +12,6 @@ public class VersionResponse {
 
     private UUID id;
 
-    private UUID documentId;
-
     private Integer versionNumber;
 
     private String fileName;
@@ -22,12 +20,12 @@ public class VersionResponse {
 
     private Boolean isActive;
 
-    private String createdBy;
-
     private LocalDateTime createdAt;
-
-    private String approvedBy;
 
     private LocalDateTime approvedAt;
 
+    private UserDto createdBy;
+    private UserDto approvedBy;
+
+    private DocumentDto document;
 }

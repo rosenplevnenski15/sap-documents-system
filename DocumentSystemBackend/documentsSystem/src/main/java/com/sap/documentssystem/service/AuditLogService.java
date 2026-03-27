@@ -36,18 +36,4 @@ public class AuditLogService {
         auditLogRepository.save(log);
     }
 
-
-   public void  log(User user, AuditAction action, String entityType, UUID entityId)
-   {
-       AuditLog log = AuditLog.builder()
-               .user(user)
-               .action(action)
-               .entityType(entityType)
-               .entityId(entityId)
-               .details(new HashMap<>())
-               .createdAt(LocalDateTime.now())
-               .build();
-
-       auditLogRepository.save(log);
-   }
 }

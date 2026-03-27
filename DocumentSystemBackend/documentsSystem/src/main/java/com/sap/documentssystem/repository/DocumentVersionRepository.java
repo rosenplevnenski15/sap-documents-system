@@ -41,4 +41,43 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
             UUID documentId,
             VersionStatus status
     );
+
+    @Query("""
+    SELECT v FROM DocumentVersion v
+    JOIN FETCH v.createdBy
+    JOIN FETCH v.document
+    LEFT JOIN FETCH v.approvedBy
+    WHERE v.id = :id
+""")
+    Optional<DocumentVersion> findFullById(UUID id);
+
+    @Query("""
+    SELECT v FROM DocumentVersion v
+    JOIN FETCH v.createdBy
+    JOIN FETCH v.document
+    LEFT JOIN FETCH v.approvedBy
+    WHERE v.document.id = :documentId
+""")
+    List<DocumentVersion> findAllFullByDocumentId(UUID documentId);
+
+    @Query("""
+    SELECT v FROM DocumentVersion v
+    JOIN FETCH v.createdBy
+    JOIN FETCH v.document
+    LEFT JOIN FETCH v.approvedBy
+    WHERE v.document.id = :documentId
+    AND v.isActive = true
+""")
+    Optional<DocumentVersion> findActiveFullByDocumentId(UUID documentId);
+
+    @Query("""
+    SELECT v FROM DocumentVersion v
+    JOIN FETCH v.createdBy
+    JOIN FETCH v.document
+    LEFT JOIN FETCH v.approvedBy
+    WHERE v.document.id = :documentId
+    AND v.status = :status
+    ORDER BY v.versionNumber DESC
+""")
+    List<DocumentVersion> findInReviewFull(UUID documentId, VersionStatus status);
 }

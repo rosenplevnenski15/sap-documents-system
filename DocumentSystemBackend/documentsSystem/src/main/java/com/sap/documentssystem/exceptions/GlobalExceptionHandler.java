@@ -16,7 +16,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -78,13 +81,24 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex,
             HttpServletRequest request
     ) {
-        String message = ex.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .collect(Collectors.joining(", "));
 
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, message, request);
+        Map<String, String> errors = new HashMap<>();
+
+        ex.getBindingResult().getFieldErrors()
+                .forEach(error ->
+                        errors.put(error.getField(), error.getDefaultMessage())
+                );
+
+        return ResponseEntity.badRequest().body(
+                ErrorResponse.builder()
+                        .timestamp(LocalDateTime.now())
+                        .status(HttpStatus.BAD_REQUEST.value())
+                        .error("Bad Request")
+                        .message("Validation failed")
+                        .path(request.getRequestURI())
+                        .validationErrors(errors)
+                        .build()
+        );
     }
 
     @ExceptionHandler(Exception.class)
@@ -159,4 +173,80 @@ public class GlobalExceptionHandler {
                 request
         );
     }
+
+    @ExceptionHandler(DocumentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleDocumentNotFound(
+            DocumentNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(VersionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleVersionNotFound(
+            VersionNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(FileStorageException.class)
+    public ResponseEntity<ErrorResponse> handleFileStorage(
+            FileStorageException ex,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUsernameNotFound(
+            UsernameNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(UserAlreadyInActiveException.class)
+    public ResponseEntity<ErrorResponse> handleUserInactive(
+            UserAlreadyInActiveException ex,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<ErrorResponse> handleIOException(
+            IOException ex,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "File processing error",
+                request
+        );
+    }
+
+
+
+
 }

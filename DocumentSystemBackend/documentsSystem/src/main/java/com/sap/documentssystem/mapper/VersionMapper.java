@@ -1,5 +1,6 @@
 package com.sap.documentssystem.mapper;
 
+import com.sap.documentssystem.dto.DocumentDto;
 import com.sap.documentssystem.dto.VersionResponse;
 import com.sap.documentssystem.model.DocumentVersion;
 
@@ -11,17 +12,23 @@ public class VersionMapper {
 
         return VersionResponse.builder()
                 .id(version.getId())
-                .documentId(version.getDocument().getId())
                 .versionNumber(version.getVersionNumber())
                 .fileName(version.getFileName())
                 .status(version.getStatus().name())
                 .isActive(version.isActive())
-                .createdBy(version.getCreatedBy().getUsername())
+
                 .createdAt(version.getCreatedAt())
-                .approvedBy(version.getApprovedBy()!=null
-                        ? version.getApprovedBy().getUsername()
-                        : null)
                 .approvedAt(version.getApprovedAt())
+
+                .createdBy(MapUser.mapUser(version.getCreatedBy()))
+                .approvedBy(version.getApprovedBy() != null
+                        ? MapUser.mapUser(version.getApprovedBy())
+                        : null)
+
+                .document(DocumentDto.builder()
+                        .id(version.getDocument().getId())
+                        .title(version.getDocument().getTitle())
+                        .build())
                 .build();
     }
 }

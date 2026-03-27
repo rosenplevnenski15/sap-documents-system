@@ -26,22 +26,6 @@ public class DocumentController {
     private final DocumentService documentService;
     private final DocumentVersionService versionService;
 
-    @GetMapping
-    @PreAuthorize("hasAnyRole('AUTHOR','REVIEWER','ADMIN','READER')")
-    public ResponseEntity<Page<DocumentResponse>> listDocuments(
-            @RequestParam(required = false, defaultValue = "") String query,
-            @RequestParam(required = false, defaultValue = "false") boolean mine,
-            @RequestParam(required = false, defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "10") int size,
-            @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
-            @RequestParam(required = false, defaultValue = "desc") String direction
-    ) {
-        Sort sort = "asc".equalsIgnoreCase(direction)
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-        return ResponseEntity.ok(documentService.listDocuments(query, mine, pageable));
-    }
 
     @PreAuthorize("hasAnyRole('AUTHOR','ADMIN')")
     @PostMapping(consumes = "multipart/form-data")

@@ -86,7 +86,7 @@ public class S3Service {
             return new String(response.readAllBytes());
 
         } catch (Exception ex) {
-            throw new RuntimeException("Failed to download file from S3", ex);
+            throw new FileStorageException("Failed to download file");
         }
     }
 

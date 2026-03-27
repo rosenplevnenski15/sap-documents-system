@@ -101,24 +101,6 @@ public class DocumentService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public Page<DocumentResponse> listDocuments(String query, boolean createdByMe, Pageable pageable) {
-        String normalizedQuery = query == null ? "" : query.trim();
-        User currentUser = currentUserService.getCurrentUser();
-        UUID userId = currentUser.getId();
 
-        Page<Document> documents;
-        if (createdByMe && !normalizedQuery.isEmpty()) {
-            documents = documentRepository.searchByCreatorAndQuery(userId, normalizedQuery, pageable);
-        } else if (createdByMe) {
-            documents = documentRepository.findByCreatedBy_Id(userId, pageable);
-        } else if (!normalizedQuery.isEmpty()) {
-            documents = documentRepository.findByTitleContainingIgnoreCase(normalizedQuery, pageable);
-        } else {
-            documents = documentRepository.findAll(pageable);
-        }
-
-        return documents.map(DocumentMapper::toResponse);
-    }
 
 }

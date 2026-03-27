@@ -1,7 +1,9 @@
 package com.sap.documentssystem.mapper;
 
 import com.sap.documentssystem.dto.DocumentResponse;
+import com.sap.documentssystem.dto.UserDto;
 import com.sap.documentssystem.model.Document;
+import com.sap.documentssystem.model.User;
 
 public class DocumentMapper {
 
@@ -10,7 +12,7 @@ public class DocumentMapper {
         return DocumentResponse.builder()
                 .id(document.getId())
                 .title(document.getTitle())
-                .createdBy(document.getCreatedBy().getUsername())
+                .createdBy(MapUser.mapUser(document.getCreatedBy()))
                 .createdAt(document.getCreatedAt())
                 .build();
     }

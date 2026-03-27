@@ -1,6 +1,9 @@
 package com.sap.documentssystem.service;
 
 import com.sap.documentssystem.dto.CommentResponse;
+import com.sap.documentssystem.dto.CreateCommentRequest;
+import com.sap.documentssystem.exceptions.InvalidVersionStateException;
+import com.sap.documentssystem.exceptions.VersionNotFoundException;
 import com.sap.documentssystem.mapper.CommentMapper;
 import com.sap.documentssystem.model.Comment;
 import com.sap.documentssystem.model.DocumentVersion;
@@ -13,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -26,19 +30,18 @@ public class CommentService {
     private final AuditLogService auditLogService;
 
     @Transactional
-    public CommentResponse addComment(UUID versionId, String content) {
+    public CommentResponse addComment(UUID versionId, CreateCommentRequest request) {
 
+        String content = request.getContent().trim();
         User user = currentUserService.getCurrentUser();
-
-        // 🔒 role check
         authorizationService.canComment(user);
 
         DocumentVersion version = versionRepository.findById(versionId)
-                .orElseThrow(() -> new RuntimeException("Version not found"));
+                .orElseThrow(VersionNotFoundException::new);
 
-        // 🔥 бизнес правило: може да се коментира само IN_REVIEW
+
         if (version.getStatus() != com.sap.documentssystem.model.VersionStatus.IN_REVIEW) {
-            throw new RuntimeException("Comments allowed only for IN_REVIEW versions");
+            throw new InvalidVersionStateException("Comments allowed only for IN_REVIEW versions");
         }
 
         Comment comment = Comment.builder()
@@ -54,10 +57,17 @@ public class CommentService {
                 user,
                 com.sap.documentssystem.model.AuditAction.ADD_COMMENT,
                 "COMMENT",
-                saved.getId()
+                saved.getId(),
+                Map.of(
+                        "versionId", versionId,
+                        "contentLength", content.length()
+                )
         );
 
-        return CommentMapper.toResponse(saved);
+        Comment full = commentRepository.findByIdWithUser(saved.getId())
+                .orElseThrow();
+
+        return CommentMapper.toResponse(full);
     }
 
     public List<CommentResponse> getComments(UUID versionId) {
@@ -66,7 +76,7 @@ public class CommentService {
         authorizationService.canRead(user);
 
         return commentRepository
-                .findByDocumentVersion_IdOrderByCreatedAtAsc(versionId)
+                .findAllWithUser(versionId)
                 .stream()
                 .map(CommentMapper::toResponse)
                 .toList();

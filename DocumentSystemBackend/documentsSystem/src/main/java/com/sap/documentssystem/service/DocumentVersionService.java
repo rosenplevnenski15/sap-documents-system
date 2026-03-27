@@ -5,16 +5,12 @@ import com.github.difflib.patch.Patch;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.element.Paragraph;
-import com.sap.documentssystem.dto.CreateVersionRequest;
 import com.sap.documentssystem.dto.VersionResponse;
-import com.sap.documentssystem.exceptions.DocumentNotFoundException;
-import com.sap.documentssystem.exceptions.InvalidVersionStateException;
-import com.sap.documentssystem.exceptions.VersionNotFoundException;
+import com.sap.documentssystem.exceptions.*;
 import com.sap.documentssystem.mapper.VersionMapper;
 import com.sap.documentssystem.model.*;
 import com.sap.documentssystem.repository.DocumentRepository;
 import com.sap.documentssystem.repository.DocumentVersionRepository;
-import com.sap.documentssystem.exceptions.AccessDeniedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +45,7 @@ public class DocumentVersionService {
         String fileUrl = null;
 
         try {
-            // 1. upload to S3
+
             fileUrl = fileService.upload(file);
 
             Document document = documentRepository.findById(documentId)
@@ -75,10 +71,19 @@ public class DocumentVersionService {
                     user,
                     AuditAction.CREATE_VERSION,
                     "VERSION",
-                    saved.getId()
+                    saved.getId(),
+                    Map.of(
+                            "documentId", documentId,
+                            "versionNumber", saved.getVersionNumber(),
+                            "fileName", saved.getFileName(),
+                            "status", saved.getStatus().name()
+                    )
             );
 
-            return VersionMapper.toResponse(saved);
+            DocumentVersion full = versionRepository.findFullById(saved.getId())
+                    .orElseThrow();
+
+            return VersionMapper.toResponse(full);
 
         } catch (Exception ex) {
 
@@ -96,7 +101,7 @@ public class DocumentVersionService {
         User user = currentUserService.getCurrentUser();
         authorizationService.canSubmitForReview(user);
 
-        DocumentVersion version = versionRepository.findById(versionId)
+        DocumentVersion version = versionRepository.findFullById(versionId)
                 .orElseThrow(VersionNotFoundException::new);
 
         if (version.getStatus() != VersionStatus.DRAFT) {
@@ -111,7 +116,13 @@ public class DocumentVersionService {
                 user,
                 AuditAction.SUBMIT_FOR_REVIEW,
                 "VERSION",
-                saved.getId()
+                saved.getId(),
+                Map.of(
+                        "documentId", saved.getDocument().getId(),
+                        "versionNumber", saved.getVersionNumber(),
+                        "status", saved.getStatus().name(),
+                        "submittedBy", user.getUsername()
+                )
         );
 
         return VersionMapper.toResponse(saved);
@@ -122,7 +133,7 @@ public class DocumentVersionService {
         User reviewer = currentUserService.getCurrentUser();
         authorizationService.canApprove(reviewer);
 
-        DocumentVersion version = versionRepository.findById(versionId)
+        DocumentVersion version = versionRepository.findFullById(versionId)
                 .orElseThrow(VersionNotFoundException::new);
 
         if (version.getStatus() != VersionStatus.IN_REVIEW) {
@@ -145,7 +156,16 @@ public class DocumentVersionService {
                 reviewer,
                 AuditAction.APPROVE_VERSION,
                 "VERSION",
-                saved.getId()
+                saved.getId(),
+                Map.of(
+                        "documentId", saved.getDocument().getId(),
+                        "versionNumber", saved.getVersionNumber(),
+                        "previousStatus", "IN_REVIEW",
+                        "newStatus", saved.getStatus().name(),
+                        "approvedBy", reviewer.getUsername(),
+                        "approvedAt", saved.getApprovedAt().toString(),
+                        "isActive", saved.isActive()
+                )
         );
 
         return VersionMapper.toResponse(saved);
@@ -156,7 +176,7 @@ public class DocumentVersionService {
         User reviewer = currentUserService.getCurrentUser();
         authorizationService.canReject(reviewer);
 
-        DocumentVersion version = versionRepository.findById(versionId)
+        DocumentVersion version = versionRepository.findFullById(versionId)
                 .orElseThrow(VersionNotFoundException::new);
 
         if (version.getStatus() != VersionStatus.IN_REVIEW) {
@@ -171,7 +191,14 @@ public class DocumentVersionService {
                 reviewer,
                 AuditAction.REJECT_VERSION,
                 "VERSION",
-                saved.getId()
+                saved.getId(),
+                Map.of(
+                        "documentId", saved.getDocument().getId(),
+                        "versionNumber", saved.getVersionNumber(),
+                        "previousStatus", "IN_REVIEW",
+                        "newStatus", saved.getStatus().name(),
+                        "rejectedBy", reviewer.getUsername()
+                )
         );
 
         return VersionMapper.toResponse(saved);
@@ -188,7 +215,7 @@ public class DocumentVersionService {
         if (user.getRole() == Role.AUTHOR &&
                 !document.getCreatedBy().getId().equals(user.getId())) {
 
-            throw new RuntimeException("Authors can only view their own documents");
+            throw new AccessDeniedException("Authors can only view their own documents");
         }
 
 
@@ -210,7 +237,7 @@ public class DocumentVersionService {
         }
 
 
-        return versionRepository.findByDocument_IdOrderByVersionNumberDesc(documentId)
+        return versionRepository.findAllFullByDocumentId(documentId)
                 .stream()
                 .map(VersionMapper::toResponse)
                 .toList();
@@ -220,11 +247,12 @@ public class DocumentVersionService {
 
 
     public VersionResponse getActiveVersion(UUID documentId) {
+
         User user = currentUserService.getCurrentUser();
         authorizationService.canRead(user);
 
         DocumentVersion version = versionRepository
-                .findByDocument_IdAndIsActiveTrue(documentId)
+                .findActiveFullByDocumentId(documentId)
                 .orElseThrow(() -> new VersionNotFoundException("Active version not found"));
 
         if (version.getStatus() != VersionStatus.APPROVED) {
@@ -241,7 +269,7 @@ public class DocumentVersionService {
         authorizationService.canEditDraft(user);
 
         DocumentVersion version = versionRepository.findById(versionId)
-                .orElseThrow(() -> new VersionNotFoundException());
+                .orElseThrow(VersionNotFoundException::new);
 
 
         if (version.getStatus() != VersionStatus.DRAFT) {
@@ -288,15 +316,18 @@ public class DocumentVersionService {
                 )
         );
 
-        return VersionMapper.toResponse(version);
+        DocumentVersion full = versionRepository.findFullById(versionId)
+                .orElseThrow();
+
+        return VersionMapper.toResponse(full);
     }
     public String compare(UUID v1, UUID v2) {
 
 
-        DocumentVersion version1 = versionRepository.findById(v1)
+        DocumentVersion version1 = versionRepository.findFullById(v1)
                 .orElseThrow(() -> new VersionNotFoundException("Version 1 not found"));
 
-        DocumentVersion version2 = versionRepository.findById(v2)
+        DocumentVersion version2 = versionRepository.findFullById(v2)
                 .orElseThrow(() -> new VersionNotFoundException("Version 2 not found"));
 
 
@@ -352,30 +383,24 @@ public class DocumentVersionService {
 
         User user = currentUserService.getCurrentUser();
 
-
         if (user.getRole() == Role.READER) {
             throw new AccessDeniedException("Readers cannot compare versions");
         }
 
-
         DocumentVersion active = versionRepository
-                .findByDocument_IdAndIsActiveTrue(documentId)
+                .findActiveFullByDocumentId(documentId)
                 .orElseThrow(() -> new VersionNotFoundException("Active version not found"));
 
-
         DocumentVersion inReview = versionRepository
-                .findTopByDocument_IdAndStatusOrderByVersionNumberDesc(
-                        documentId,
-                        VersionStatus.IN_REVIEW
-                )
+                .findInReviewFull(documentId, VersionStatus.IN_REVIEW)
+                .stream()
+                .findFirst()
                 .orElseThrow(() -> new VersionNotFoundException("No version in review"));
-
 
         if (user.getRole() == Role.AUTHOR &&
                 !active.getDocument().getCreatedBy().getId().equals(user.getId())) {
             throw new AccessDeniedException("You can compare only your documents");
         }
-
 
         if (!active.getFileName().endsWith(".txt") ||
                 !inReview.getFileName().endsWith(".txt")) {
@@ -390,7 +415,7 @@ public class DocumentVersionService {
         User user = currentUserService.getCurrentUser();
         authorizationService.canRead(user);
 
-        DocumentVersion version = versionRepository.findById(versionId)
+        DocumentVersion version = versionRepository.findFullById(versionId)
                 .orElseThrow(() -> new VersionNotFoundException("Version not found"));
 
 
@@ -424,13 +449,19 @@ public class DocumentVersionService {
                     user,
                     AuditAction.EXPORT_DOCUMENT,
                     "VERSION",
-                    versionId
+                    versionId,
+                    Map.of(
+                            "documentId", version.getDocument().getId(),
+                            "versionNumber", version.getVersionNumber(),
+                            "fileName", version.getFileName(),
+                            "exportedBy", user.getUsername()
+                    )
             );
 
             return out.toByteArray();
 
         } catch (Exception ex) {
-            throw new RuntimeException("Failed to export PDF", ex);
+            throw new FileStorageException("Failed to export PDF");
         }
     }
 

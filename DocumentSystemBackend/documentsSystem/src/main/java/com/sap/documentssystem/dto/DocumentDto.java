@@ -3,19 +3,13 @@ package com.sap.documentssystem.dto;
 import lombok.Builder;
 import lombok.Data;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
 @Builder
-public class DocumentResponse {
+public class DocumentDto {
 
     private UUID id;
 
     private String title;
-
-    private UserDto createdBy;
-
-    private LocalDateTime createdAt;
-
 }

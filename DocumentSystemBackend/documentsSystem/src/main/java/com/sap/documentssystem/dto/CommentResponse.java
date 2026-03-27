@@ -18,7 +18,5 @@ public class CommentResponse {
 
     private final LocalDateTime createdAt;
 
-    private final UUID userId;
-
-    private final String username;
+    private final UserDto user;
 }

@@ -46,7 +46,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                jwtService.validateTokenOrThrow(token, userDetails.getUsername());
+                jwtService.validateAccessToken(token, userDetails.getUsername());
 
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
@@ -63,11 +63,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (JwtAuthenticationException ex) {
+
             SecurityContextHolder.clearContext();
 
-            request.setAttribute("jwt_exception", ex);
-
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+
+            String json = """
+        {
+          "status": 401,
+          "error": "Unauthorized",
+          "message": "%s"
+        }
+    """.formatted(ex.getMessage());
+
+            response.getWriter().write(json);
             return;
         }
 

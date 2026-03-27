@@ -1,6 +1,5 @@
 package com.sap.documentssystem.controller;
 
-import com.sap.documentssystem.dto.CreateVersionRequest;
 import com.sap.documentssystem.dto.VersionResponse;
 import com.sap.documentssystem.service.DocumentVersionService;
 import jakarta.validation.Valid;
@@ -23,6 +22,7 @@ public class DocumentVersionController {
     private final DocumentVersionService versionService;
 
     @PostMapping("/documents/{documentId}/versions")
+    @PreAuthorize("hasAnyRole('AUTHOR','ADMIN')")
     public ResponseEntity<VersionResponse> createVersion(
             @PathVariable UUID documentId,
             @RequestParam MultipartFile file
@@ -33,16 +33,19 @@ public class DocumentVersionController {
     }
 
     @PostMapping("/{versionId}/submit")
+    @PreAuthorize("hasAnyRole('AUTHOR','ADMIN')")
     public ResponseEntity<VersionResponse> submitForReview(@PathVariable UUID versionId) {
         return ResponseEntity.ok(versionService.submitForReview(versionId));
     }
 
     @PostMapping("/{versionId}/approve")
+    @PreAuthorize("hasAnyRole('AUTHOR','REVIEWER')")
     public ResponseEntity<VersionResponse> approveVersion(@PathVariable UUID versionId) {
         return ResponseEntity.ok(versionService.approveVersion(versionId));
     }
 
     @PostMapping("/{versionId}/reject")
+    @PreAuthorize("hasAnyRole('AUTHOR','REVIEWER')")
     public ResponseEntity<VersionResponse> rejectVersion(@PathVariable UUID versionId) {
         return ResponseEntity.ok(versionService.rejectVersion(versionId));
     }

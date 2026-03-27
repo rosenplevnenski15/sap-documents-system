@@ -45,7 +45,12 @@ public class UserService {
                 user,
                 AuditAction.USER_REGISTERED,
                 "USER",
-                user.getId()
+                user.getId(),
+                Map.of(
+                        "username", user.getUsername(),
+                        "role", user.getRole().name(),
+                        "isActive", user.isActive()
+                )
         );
     }
     @Transactional
@@ -69,8 +74,10 @@ public class UserService {
                 "USER",
                 userId,
                 Map.of(
-                        "oldRole", oldRole,
-                        "newRole", newRole
+                        "targetUserId", userId,
+                        "oldRole", oldRole.name(),
+                        "newRole", newRole.name(),
+                        "changedBy", admin.getUsername()
                 )
         );
     }
@@ -96,7 +103,13 @@ public class UserService {
                 admin,
                 AuditAction.USER_DEACTIVATED,
                 "USER",
-                userId
+                userId,
+                Map.of(
+                        "targetUserId", userId,
+                        "targetUsername", user.getUsername(),
+                        "deactivatedBy", admin.getUsername(),
+                        "wasActive", true
+                )
         );
     }
 }
