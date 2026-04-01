@@ -1,4 +1,4 @@
-package com.sap.documentssystem.model;
+package com.sap.documentssystem.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -26,6 +26,7 @@ public class User {
     @Column(unique = true, nullable = false, length = 50)
     private String username;
 
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 
@@ -39,9 +40,11 @@ public class User {
     @Column(name = "is_active")
     private boolean isActive=true;
 
-    @Column(name = "created_at",nullable = false)
+    @Setter(AccessLevel.NONE)
+    @Column(name = "created_at",nullable = false,updatable = false)
     private LocalDateTime createdAt;
 
+    @Setter(AccessLevel.NONE)
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -52,5 +55,10 @@ public class User {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

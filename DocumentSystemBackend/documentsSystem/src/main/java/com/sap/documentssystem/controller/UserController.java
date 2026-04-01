@@ -1,7 +1,8 @@
 package com.sap.documentssystem.controller;
 
-import com.sap.documentssystem.model.Role;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.dto.UserDto;
+import com.sap.documentssystem.entity.Role;
+import com.sap.documentssystem.entity.User;
 import com.sap.documentssystem.repository.UserRepository;
 import com.sap.documentssystem.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,7 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
-    private final UserRepository userRepository;
+
 
     @PutMapping("/{userId}/role")
     @PreAuthorize("hasRole('ADMIN')")
@@ -40,7 +41,7 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserDto> getAllUsers() {
+        return userService.getAllUsers();
     }
 }

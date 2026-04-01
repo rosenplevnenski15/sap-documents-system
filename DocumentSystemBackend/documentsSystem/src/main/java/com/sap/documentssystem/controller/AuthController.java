@@ -1,16 +1,12 @@
 package com.sap.documentssystem.controller;
 
 import com.sap.documentssystem.dto.*;
-import com.sap.documentssystem.model.User;
-import com.sap.documentssystem.repository.UserRepository;
-import com.sap.documentssystem.security.JwtService;
 import com.sap.documentssystem.service.AuthService;
 import com.sap.documentssystem.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;

@@ -1,4 +1,4 @@
-package com.sap.documentssystem.model;
+package com.sap.documentssystem.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -28,7 +28,8 @@ public class Document {
     @JoinColumn(name = "created_by",nullable = false)
     private User createdBy;
 
-    @Column(name = "created_at",nullable = false)
+    @Setter(AccessLevel.NONE)
+    @Column(name = "created_at",nullable = false,updatable = false)
     private LocalDateTime createdAt;
 
     @JsonIgnore

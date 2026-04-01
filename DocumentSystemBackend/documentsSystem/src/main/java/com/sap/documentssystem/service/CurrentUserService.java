@@ -1,6 +1,6 @@
 package com.sap.documentssystem.service;
 
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.User;
 import com.sap.documentssystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;

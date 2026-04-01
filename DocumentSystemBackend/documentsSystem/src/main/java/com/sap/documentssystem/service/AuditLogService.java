@@ -1,14 +1,13 @@
 package com.sap.documentssystem.service;
 
-import com.sap.documentssystem.model.AuditAction;
-import com.sap.documentssystem.model.AuditLog;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.AuditAction;
+import com.sap.documentssystem.entity.AuditLog;
+import com.sap.documentssystem.entity.User;
 import com.sap.documentssystem.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,7 +29,6 @@ public class AuditLogService {
                 .entityType(entityType)
                 .entityId(entityId)
                 .details(details)
-                .createdAt(LocalDateTime.now())
                 .build();
 
         auditLogRepository.save(log);

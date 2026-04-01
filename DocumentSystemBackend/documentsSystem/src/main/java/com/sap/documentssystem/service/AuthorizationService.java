@@ -1,8 +1,8 @@
 package com.sap.documentssystem.service;
 
 import com.sap.documentssystem.exceptions.AccessDeniedException;
-import com.sap.documentssystem.model.Role;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.Role;
+import com.sap.documentssystem.entity.User;
 import org.springframework.stereotype.Service;
 
 @Service

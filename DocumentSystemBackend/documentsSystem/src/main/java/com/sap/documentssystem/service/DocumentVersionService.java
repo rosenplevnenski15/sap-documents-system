@@ -8,11 +8,12 @@ import com.itextpdf.layout.element.Paragraph;
 import com.sap.documentssystem.dto.VersionResponse;
 import com.sap.documentssystem.exceptions.*;
 import com.sap.documentssystem.mapper.VersionMapper;
-import com.sap.documentssystem.model.*;
+import com.sap.documentssystem.entity.*;
 import com.sap.documentssystem.repository.DocumentRepository;
 import com.sap.documentssystem.repository.DocumentVersionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 

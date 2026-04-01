@@ -1,4 +1,4 @@
-package com.sap.documentssystem.model;
+package com.sap.documentssystem.entity;
 
 public enum Role {
     READER,

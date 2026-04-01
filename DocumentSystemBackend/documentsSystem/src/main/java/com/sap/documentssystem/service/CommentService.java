@@ -5,9 +5,9 @@ import com.sap.documentssystem.dto.CreateCommentRequest;
 import com.sap.documentssystem.exceptions.InvalidVersionStateException;
 import com.sap.documentssystem.exceptions.VersionNotFoundException;
 import com.sap.documentssystem.mapper.CommentMapper;
-import com.sap.documentssystem.model.Comment;
-import com.sap.documentssystem.model.DocumentVersion;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.Comment;
+import com.sap.documentssystem.entity.DocumentVersion;
+import com.sap.documentssystem.entity.User;
 import com.sap.documentssystem.repository.CommentRepository;
 import com.sap.documentssystem.repository.DocumentVersionRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +40,7 @@ public class CommentService {
                 .orElseThrow(VersionNotFoundException::new);
 
 
-        if (version.getStatus() != com.sap.documentssystem.model.VersionStatus.IN_REVIEW) {
+        if (version.getStatus() != com.sap.documentssystem.entity.VersionStatus.IN_REVIEW) {
             throw new InvalidVersionStateException("Comments allowed only for IN_REVIEW versions");
         }
 
@@ -48,14 +48,13 @@ public class CommentService {
                 .documentVersion(version)
                 .user(user)
                 .content(content)
-                .createdAt(LocalDateTime.now())
                 .build();
 
         Comment saved = commentRepository.save(comment);
 
         auditLogService.log(
                 user,
-                com.sap.documentssystem.model.AuditAction.ADD_COMMENT,
+                com.sap.documentssystem.entity.AuditAction.ADD_COMMENT,
                 "COMMENT",
                 saved.getId(),
                 Map.of(

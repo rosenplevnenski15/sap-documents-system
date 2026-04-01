@@ -1,19 +1,21 @@
 package com.sap.documentssystem.service;
 
 import com.sap.documentssystem.dto.RegisterRequest;
+import com.sap.documentssystem.dto.UserDto;
 import com.sap.documentssystem.exceptions.UserAlreadyExistsException;
 import com.sap.documentssystem.exceptions.UserAlreadyInActiveException;
 import com.sap.documentssystem.exceptions.UserNotFoundException;
-import com.sap.documentssystem.model.AuditAction;
-import com.sap.documentssystem.model.Role;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.AuditAction;
+import com.sap.documentssystem.entity.Role;
+import com.sap.documentssystem.entity.User;
+import com.sap.documentssystem.mapper.MapUser;
 import com.sap.documentssystem.repository.UserRepository;
-import com.sap.documentssystem.service.AuditLogService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -111,5 +113,12 @@ public class UserService {
                         "wasActive", true
                 )
         );
+    }
+
+    public List<UserDto> getAllUsers() {
+        return userRepository.findAll()
+                .stream()
+                .map(MapUser::mapUser)
+                .toList();
     }
 }

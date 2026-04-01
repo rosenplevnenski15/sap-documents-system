@@ -4,7 +4,7 @@ import com.sap.documentssystem.dto.LoginRequest;
 import com.sap.documentssystem.dto.LoginResponse;
 import com.sap.documentssystem.dto.UserDto;
 import com.sap.documentssystem.mapper.MapUser;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.User;
 import com.sap.documentssystem.repository.UserRepository;
 import com.sap.documentssystem.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +12,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service

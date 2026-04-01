@@ -1,4 +1,4 @@
-package com.sap.documentssystem.model;
+package com.sap.documentssystem.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -40,7 +40,8 @@ public class AuditLog {
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> details;
 
-    @Column(name = "created_at", nullable = false)
+    @Setter(AccessLevel.NONE)
+    @Column(name = "created_at", nullable = false,updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

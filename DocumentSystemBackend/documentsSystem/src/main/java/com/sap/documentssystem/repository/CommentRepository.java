@@ -1,6 +1,6 @@
 package com.sap.documentssystem.repository;
 
-import com.sap.documentssystem.model.Comment;
+import com.sap.documentssystem.entity.Comment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 

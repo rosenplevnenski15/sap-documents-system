@@ -1,9 +1,7 @@
 package com.sap.documentssystem.mapper;
 
 import com.sap.documentssystem.dto.CommentResponse;
-import com.sap.documentssystem.dto.UserDto;
-import com.sap.documentssystem.model.Comment;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.Comment;
 
 public class CommentMapper {
 

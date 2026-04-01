@@ -1,7 +1,7 @@
 package com.sap.documentssystem.repository;
 
-import com.sap.documentssystem.model.DocumentVersion;
-import com.sap.documentssystem.model.VersionStatus;
+import com.sap.documentssystem.entity.DocumentVersion;
+import com.sap.documentssystem.entity.VersionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

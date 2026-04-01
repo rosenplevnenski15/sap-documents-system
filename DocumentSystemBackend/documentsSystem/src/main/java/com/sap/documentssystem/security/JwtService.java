@@ -1,7 +1,7 @@
 package com.sap.documentssystem.security;
 
 import com.sap.documentssystem.exceptions.JwtAuthenticationException;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;

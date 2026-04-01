@@ -1,7 +1,7 @@
 package com.sap.documentssystem.mapper;
 
 import com.sap.documentssystem.dto.UserDto;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.User;
 
 public class MapUser {
     public static UserDto mapUser(User user) {

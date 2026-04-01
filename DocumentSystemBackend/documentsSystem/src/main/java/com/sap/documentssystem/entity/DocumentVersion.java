@@ -1,4 +1,4 @@
-package com.sap.documentssystem.model;
+package com.sap.documentssystem.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -7,7 +7,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -56,7 +55,8 @@ public class DocumentVersion {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
-    @Column(name = "created_at", nullable = false)
+    @Setter(AccessLevel.NONE)
+    @Column(name = "created_at", nullable = false,updatable = false)
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)

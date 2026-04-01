@@ -2,9 +2,7 @@ package com.sap.documentssystem.mapper;
 
 import com.sap.documentssystem.dto.DocumentDto;
 import com.sap.documentssystem.dto.VersionResponse;
-import com.sap.documentssystem.model.DocumentVersion;
-
-import javax.print.Doc;
+import com.sap.documentssystem.entity.DocumentVersion;
 
 public class VersionMapper {
 

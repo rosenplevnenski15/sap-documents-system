@@ -1,4 +1,4 @@
-package com.sap.documentssystem.model;
+package com.sap.documentssystem.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,7 +29,8 @@ public class Comment {
     @Column(nullable = false)
     private String content;
 
-    @Column(name = "created_at", nullable = false)
+    @Setter(AccessLevel.NONE)
+    @Column(name = "created_at", nullable = false,updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

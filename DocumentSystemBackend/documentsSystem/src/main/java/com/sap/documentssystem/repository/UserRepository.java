@@ -1,6 +1,6 @@
 package com.sap.documentssystem.repository;
 
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

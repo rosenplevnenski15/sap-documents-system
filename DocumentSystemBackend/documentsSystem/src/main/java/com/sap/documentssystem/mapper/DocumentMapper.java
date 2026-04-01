@@ -1,9 +1,7 @@
 package com.sap.documentssystem.mapper;
 
 import com.sap.documentssystem.dto.DocumentResponse;
-import com.sap.documentssystem.dto.UserDto;
-import com.sap.documentssystem.model.Document;
-import com.sap.documentssystem.model.User;
+import com.sap.documentssystem.entity.Document;
 
 public class DocumentMapper {
 
