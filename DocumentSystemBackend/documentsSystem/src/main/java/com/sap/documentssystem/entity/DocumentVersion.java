@@ -66,6 +66,9 @@ public class DocumentVersion {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    @Version
+    private Long version;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();

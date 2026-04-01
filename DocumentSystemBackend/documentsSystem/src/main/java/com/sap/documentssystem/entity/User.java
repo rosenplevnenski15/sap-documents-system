@@ -52,6 +52,9 @@ public class User {
     @OneToMany(mappedBy = "createdBy",fetch = FetchType.LAZY)
     private List<Document> documents;
 
+    @Version
+    private Long version;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
