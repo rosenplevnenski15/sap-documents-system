@@ -9,7 +9,11 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import java.nio.charset.StandardCharsets;
 
 import java.util.UUID;
 
@@ -83,7 +87,7 @@ public class S3Service {
             ResponseInputStream<GetObjectResponse> response =
                     s3Client.getObject(request);
 
-            return new String(response.readAllBytes());
+            return new String(response.readAllBytes(), StandardCharsets.UTF_8);
 
         } catch (Exception ex) {
             throw new FileStorageException("Failed to download file");

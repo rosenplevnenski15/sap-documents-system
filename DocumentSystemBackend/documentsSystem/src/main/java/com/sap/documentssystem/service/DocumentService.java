@@ -3,7 +3,11 @@ package com.sap.documentssystem.service;
 import com.sap.documentssystem.dto.DocumentResponse;
 import com.sap.documentssystem.exceptions.FileStorageException;
 import com.sap.documentssystem.mapper.DocumentMapper;
-import com.sap.documentssystem.entity.*;
+import com.sap.documentssystem.entity.User;
+import com.sap.documentssystem.entity.Document;
+import com.sap.documentssystem.entity.VersionStatus;
+import com.sap.documentssystem.entity.DocumentVersion;
+import com.sap.documentssystem.entity.AuditAction;
 import com.sap.documentssystem.repository.DocumentRepository;
 import com.sap.documentssystem.repository.DocumentVersionRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,9 +15,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service

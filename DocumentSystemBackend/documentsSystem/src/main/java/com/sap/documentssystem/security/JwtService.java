@@ -32,9 +32,10 @@ public class JwtService {
     public String generateToken(User user) {
         return Jwts.builder()
                 .setSubject(user.getUsername())
+                .claim("user_id", user.getId())
+                .claim("username", user.getUsername())
                 .claim("role", user.getRole().name())
-                .claim("userId", user.getId())
-                .claim("type", "access")
+                .claim("token_type", "access")
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
@@ -45,19 +46,6 @@ public class JwtService {
         return extractAllClaims(token).getSubject();
     }
 
-    public void validateTokenOrThrow(String token, String expectedUsername) {
-        Claims claims = extractAllClaims(token);
-
-        String extractedUsername = claims.getSubject();
-
-        if (!extractedUsername.equals(expectedUsername)) {
-            throw new JwtAuthenticationException("JWT username mismatch");
-        }
-
-        if (claims.getExpiration().before(new Date())) {
-            throw new JwtAuthenticationException("JWT token expired");
-        }
-    }
 
     private Claims extractAllClaims(String token) {
         try {
@@ -110,5 +98,8 @@ public class JwtService {
         if (claims.getExpiration().before(new Date())) {
             throw new JwtAuthenticationException("JWT expired");
         }
+    }
+    public long getExpiration() {
+        return jwtExpiration;
     }
 }

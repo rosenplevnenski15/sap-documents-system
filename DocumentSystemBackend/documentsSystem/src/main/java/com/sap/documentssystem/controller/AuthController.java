@@ -1,13 +1,19 @@
 package com.sap.documentssystem.controller;
 
-import com.sap.documentssystem.dto.*;
+import com.sap.documentssystem.dto.LoginRequest;
+import com.sap.documentssystem.dto.LoginResponse;
+import com.sap.documentssystem.dto.RegisterRequest;
+import com.sap.documentssystem.dto.RefreshTokenRequest;
 import com.sap.documentssystem.service.AuthService;
 import com.sap.documentssystem.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.Map;
 

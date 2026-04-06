@@ -40,7 +40,7 @@ public class AuthService {
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .expiresIn(900L) // 15 min
+                .expiresIn(jwtService.getExpiration()/1000)
                 .user(UserDto.builder()
                         .id(user.getId())
                         .username(user.getUsername())
@@ -62,7 +62,7 @@ public class AuthService {
         return LoginResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(refreshToken)
-                .expiresIn(900L)
+                .expiresIn(jwtService.getExpiration()/1000)
                 .user(MapUser.mapUser(user))
                 .build();
     }

@@ -16,7 +16,6 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     WHERE c.id = :id
 """)
     Optional<Comment> findByIdWithUser(UUID id);
-    List<Comment> findByDocumentVersion_IdOrderByCreatedAtAsc(UUID versionId);
     @Query("""
     SELECT c FROM Comment c
     JOIN FETCH c.user

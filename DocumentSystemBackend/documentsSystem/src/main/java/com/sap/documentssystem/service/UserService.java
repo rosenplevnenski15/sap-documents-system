@@ -1,5 +1,4 @@
 package com.sap.documentssystem.service;
-
 import com.sap.documentssystem.dto.RegisterRequest;
 import com.sap.documentssystem.dto.UserDto;
 import com.sap.documentssystem.exceptions.UserAlreadyExistsException;
@@ -10,7 +9,7 @@ import com.sap.documentssystem.entity.Role;
 import com.sap.documentssystem.entity.User;
 import com.sap.documentssystem.mapper.MapUser;
 import com.sap.documentssystem.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
