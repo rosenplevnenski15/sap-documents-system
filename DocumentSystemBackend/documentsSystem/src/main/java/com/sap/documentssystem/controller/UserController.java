@@ -1,5 +1,6 @@
 package com.sap.documentssystem.controller;
 
+import com.sap.documentssystem.dto.ApiResponse;
 import com.sap.documentssystem.dto.UserDto;
 import com.sap.documentssystem.entity.Role;
 import com.sap.documentssystem.service.UserService;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -32,14 +32,22 @@ public class UserController {
             @RequestParam Role role
     ) {
         userService.changeRole(userId, role);
-        return ResponseEntity.ok(Map.of("message", "Role updated"));
+        return ResponseEntity.ok(
+                ApiResponse.builder()
+                        .message("Role updated")
+                        .build()
+        );
     }
 
     @PutMapping("/{userId}/deactivate")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deactivateUser(@PathVariable UUID userId) {
         userService.deactivateUser(userId);
-        return ResponseEntity.ok(Map.of("message", "User deactivated"));
+        return ResponseEntity.ok(
+                ApiResponse.builder()
+                        .message("User deactivated")
+                        .build()
+        );
     }
 
     @GetMapping

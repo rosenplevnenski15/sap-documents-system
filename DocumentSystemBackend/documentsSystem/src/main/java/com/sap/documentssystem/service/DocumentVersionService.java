@@ -1,11 +1,10 @@
 package com.sap.documentssystem.service;
 
-import com.github.difflib.DiffUtils;
-import com.github.difflib.patch.Patch;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.element.Paragraph;
 import com.sap.documentssystem.dto.VersionResponse;
+import com.sap.documentssystem.dto.CompareResponse;
 import com.sap.documentssystem.exceptions.DocumentNotFoundException;
 import com.sap.documentssystem.exceptions.VersionNotFoundException;
 import com.sap.documentssystem.exceptions.InvalidVersionStateException;
@@ -330,15 +329,13 @@ public class DocumentVersionService {
 
         return VersionMapper.toResponse(full);
     }
-    public String compare(UUID v1, UUID v2) {
-
+    public CompareResponse compare(UUID v1, UUID v2) {
 
         DocumentVersion version1 = versionRepository.findFullById(v1)
                 .orElseThrow(() -> new VersionNotFoundException("Version 1 not found"));
 
         DocumentVersion version2 = versionRepository.findFullById(v2)
                 .orElseThrow(() -> new VersionNotFoundException("Version 2 not found"));
-
 
         User user = currentUserService.getCurrentUser();
         authorizationService.canCompare(user);
@@ -352,27 +349,17 @@ public class DocumentVersionService {
             throw new AccessDeniedException("Readers cannot compare versions");
         }
 
-
         if (v1.equals(v2)) {
             throw new IllegalArgumentException("Cannot compare the same version");
         }
-
 
         if (!version1.getFileName().endsWith(".txt") ||
                 !version2.getFileName().endsWith(".txt")) {
             throw new IllegalArgumentException("Only TXT files can be compared");
         }
 
-
         String text1 = s3Service.downloadFileAsText(version1.getS3Url());
         String text2 = s3Service.downloadFileAsText(version2.getS3Url());
-
-        List<String> original = List.of(text1.split("\n"));
-        List<String> revised = List.of(text2.split("\n"));
-
-
-        Patch<String> patch = DiffUtils.diff(original, revised);
-
 
         auditLogService.log(
                 user,
@@ -385,10 +372,16 @@ public class DocumentVersionService {
                 )
         );
 
-
-        return patch.getDeltas().toString();
+        return CompareResponse.builder()
+                .fileName1(version1.getFileName())
+                .fileName2(version2.getFileName())
+                .version1Content(text1)
+                .version2Content(text2)
+                .version1Number(version1.getVersionNumber())
+                .version2Number(version2.getVersionNumber())
+                .build();
     }
-    public String compareLatest(UUID documentId) {
+    public CompareResponse compareLatest(UUID documentId) {
 
         User user = currentUserService.getCurrentUser();
 

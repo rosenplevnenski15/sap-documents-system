@@ -14,18 +14,34 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import java.nio.charset.StandardCharsets;
-
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.UUID;
+import jakarta.annotation.PreDestroy;
+import java.util.concurrent.ExecutorService;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class S3Service {
 
+
     private final S3Client s3Client;
+    private final Executor executor = Executors.newFixedThreadPool(10);
 
     @Value("${aws.s3.bucket}")
     private String bucketName;
+
+    @PreDestroy
+    public void shutdown() {
+        if (executor instanceof ExecutorService es) {
+            es.shutdown();
+        }
+    }
 
     public String uploadFile(MultipartFile file) {
 
@@ -75,22 +91,22 @@ public class S3Service {
         }
     }
     public String downloadFileAsText(String fileUrl) {
-
         try {
-            String key = extractKeyFromUrl(fileUrl);
+            return CompletableFuture
+                    .supplyAsync(() -> downloadInternal(fileUrl), executor)
+                    .get(5, TimeUnit.SECONDS);
 
-            GetObjectRequest request = GetObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .build();
+        } catch (TimeoutException e) {
+            log.error("S3 timeout for file: {}", fileUrl);
+            throw new FileStorageException("S3 timeout");
 
-            ResponseInputStream<GetObjectResponse> response =
-                    s3Client.getObject(request);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new FileStorageException("Thread interrupted");
 
-            return new String(response.readAllBytes(), StandardCharsets.UTF_8);
-
-        } catch (Exception ex) {
-            throw new FileStorageException("Failed to download file");
+        } catch (ExecutionException e) {
+            log.error("S3 execution error", e);
+            throw new FileStorageException("File service temporarily unavailable");
         }
     }
 
@@ -124,5 +140,23 @@ public class S3Service {
 
     private String extractKeyFromUrl(String url) {
         return url.substring(url.lastIndexOf("/") + 1);
+    }
+    private String downloadInternal(String fileUrl) {
+        try {
+            String key = extractKeyFromUrl(fileUrl);
+
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            ResponseInputStream<GetObjectResponse> response =
+                    s3Client.getObject(request);
+
+            return new String(response.readAllBytes(), StandardCharsets.UTF_8);
+
+        } catch (Exception ex) {
+            throw new FileStorageException("Failed to download file from S3", ex);
+        }
     }
 }

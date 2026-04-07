@@ -68,6 +68,7 @@ public class UserService {
         }
 
         user.setRole(newRole);
+        userRepository.save(user);
 
         auditLogService.log(
                 admin,

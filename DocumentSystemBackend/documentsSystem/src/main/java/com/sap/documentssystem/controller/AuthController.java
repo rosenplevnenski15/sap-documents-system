@@ -4,6 +4,7 @@ import com.sap.documentssystem.dto.LoginRequest;
 import com.sap.documentssystem.dto.LoginResponse;
 import com.sap.documentssystem.dto.RegisterRequest;
 import com.sap.documentssystem.dto.RefreshTokenRequest;
+import com.sap.documentssystem.dto.ApiResponse;
 import com.sap.documentssystem.service.AuthService;
 import com.sap.documentssystem.service.UserService;
 import jakarta.validation.Valid;
@@ -14,8 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -34,10 +33,15 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse> register(@Valid @RequestBody RegisterRequest request) {
         userService.register(request);
-       return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("message", "User registered"));
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(
+                        ApiResponse.builder()
+                                .message("User registered")
+                                .build()
+                );
     }
 
     @PostMapping("/refresh")
@@ -45,6 +49,18 @@ public class AuthController {
     ) {
         return ResponseEntity.ok(
                 authService.refreshToken(request.getRefreshToken())
+        );
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse> logout() {
+
+        authService.logout();
+
+        return ResponseEntity.ok(
+                ApiResponse.builder()
+                        .message("Logged out successfully")
+                        .build()
         );
     }
 }

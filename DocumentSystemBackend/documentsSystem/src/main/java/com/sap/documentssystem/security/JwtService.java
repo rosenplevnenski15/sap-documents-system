@@ -35,7 +35,7 @@ public class JwtService {
                 .claim("user_id", user.getId())
                 .claim("username", user.getUsername())
                 .claim("role", user.getRole().name())
-                .claim("token_type", "access")
+                .claim("type", "access")
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)

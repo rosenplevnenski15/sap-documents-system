@@ -1,32 +1,30 @@
 package com.sap.documentssystem.controller;
 
+import com.sap.documentssystem.dto.HealthResponse;
+import com.sap.documentssystem.dto.HomeResponse;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-
-import java.util.Map;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api")
 public class HomeController {
 
     @GetMapping("/")
-    public ResponseEntity<Map<String, String>> home() {
+    public ResponseEntity<HomeResponse> home() {
         return ResponseEntity.ok(
-                Map.of(
-                        "application", "Documents System API",
-                        "status", "RUNNING"
-                )
+                HomeResponse.builder()
+                        .application("Documents System API")
+                        .status("RUNNING")
+                        .build()
         );
     }
 
     @GetMapping("/health")
-    public ResponseEntity<Map<String, String>> health() {
+    public ResponseEntity<HealthResponse> health() {
         return ResponseEntity.ok(
-                Map.of(
-                        "status", "UP"
-                )
+                HealthResponse.builder()
+                        .status("UP")
+                        .build()
         );
     }
 }

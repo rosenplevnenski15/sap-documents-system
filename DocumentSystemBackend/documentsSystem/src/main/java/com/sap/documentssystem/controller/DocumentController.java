@@ -2,6 +2,7 @@ package com.sap.documentssystem.controller;
 
 import com.sap.documentssystem.dto.CreateDocumentRequest;
 import com.sap.documentssystem.dto.DocumentResponse;
+import com.sap.documentssystem.dto.CompareResponse;
 import com.sap.documentssystem.service.DocumentService;
 import com.sap.documentssystem.service.DocumentVersionService;
 import jakarta.validation.Valid;
@@ -41,7 +42,7 @@ public class DocumentController {
 
     @GetMapping("/{documentId}/compare")
     @PreAuthorize("hasAnyRole('AUTHOR','REVIEWER','ADMIN')")
-    public ResponseEntity<String> compare(@PathVariable UUID documentId) {
+    public ResponseEntity<CompareResponse> compare(@PathVariable UUID documentId) {
         return ResponseEntity.ok(versionService.compareLatest(documentId));
     }
 

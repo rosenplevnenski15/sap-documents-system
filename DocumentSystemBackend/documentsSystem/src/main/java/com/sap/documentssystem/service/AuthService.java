@@ -3,6 +3,7 @@ package com.sap.documentssystem.service;
 import com.sap.documentssystem.dto.LoginRequest;
 import com.sap.documentssystem.dto.LoginResponse;
 import com.sap.documentssystem.dto.UserDto;
+import com.sap.documentssystem.entity.AuditAction;
 import com.sap.documentssystem.mapper.MapUser;
 import com.sap.documentssystem.entity.User;
 import com.sap.documentssystem.repository.UserRepository;
@@ -14,6 +15,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -21,6 +24,8 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
+    private final AuditLogService auditLogService;
+    private final CurrentUserService currentUserService;
 
     public LoginResponse login(LoginRequest request) {
 
@@ -33,6 +38,16 @@ public class AuthService {
 
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+
+        auditLogService.log(
+                user,
+                AuditAction.LOGIN,
+                "USER",
+                user.getId(),
+                Map.of(
+                        "username", user.getUsername()
+                )
+        );
 
         String accessToken = jwtService.generateToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
@@ -65,5 +80,18 @@ public class AuthService {
                 .expiresIn(jwtService.getExpiration()/1000)
                 .user(MapUser.mapUser(user))
                 .build();
+    }
+
+    public void logout() {
+
+        User user = currentUserService.getCurrentUser();
+
+        auditLogService.log(
+                user,
+                AuditAction.LOGOUT,
+                "USER",
+                user.getId(),
+                Map.of("username", user.getUsername())
+        );
     }
 }
