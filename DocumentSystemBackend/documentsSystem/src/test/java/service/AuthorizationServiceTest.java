@@ -6,6 +6,7 @@ import com.sap.documentssystem.exceptions.AccessDeniedException;
 import com.sap.documentssystem.service.AuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -24,78 +25,86 @@ class AuthorizationServiceTest {
         return u;
     }
 
+    private void assertAllowed(Consumer<User> action, Role... roles) {
+        for (Role role : roles) {
+            action.accept(user(role));
+        }
+    }
+
+    private void assertDenied(Consumer<User> action, Role role, String message) {
+        assertThatThrownBy(() -> action.accept(user(role)))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage(message);
+    }
+
     // ---------------- CREATE DOCUMENT ----------------
 
     @Test
-    void shouldAllowAuthorToCreateDocument() {
-        authorizationService.canCreateDocument(user(Role.AUTHOR));
+    void shouldAllowCreateDocument() {
+        assertAllowed(authorizationService::canCreateDocument, Role.AUTHOR, Role.ADMIN);
     }
 
     @Test
-    void shouldAllowAdminToCreateDocument() {
-        authorizationService.canCreateDocument(user(Role.ADMIN));
-    }
-
-    @Test
-    void shouldDenyReviewerToCreateDocument() {
-        assertThatThrownBy(() ->
-                authorizationService.canCreateDocument(user(Role.REVIEWER))
-        )
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("Only AUTHOR or ADMIN can create documents");
+    void shouldDenyCreateDocument() {
+        assertDenied(
+                authorizationService::canCreateDocument,
+                Role.REVIEWER,
+                "Only AUTHOR or ADMIN can create documents"
+        );
     }
 
     // ---------------- APPROVE ----------------
 
     @Test
-    void shouldAllowReviewerToApprove() {
-        authorizationService.canApprove(user(Role.REVIEWER));
+    void shouldAllowApprove() {
+        assertAllowed(authorizationService::canApprove, Role.REVIEWER, Role.ADMIN);
     }
 
     @Test
-    void shouldAllowAdminToApprove() {
-        authorizationService.canApprove(user(Role.ADMIN));
-    }
-
-    @Test
-    void shouldDenyAuthorToApprove() {
-        assertThatThrownBy(() ->
-                authorizationService.canApprove(user(Role.AUTHOR))
-        )
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("Only REVIEWER or ADMIN can approve versions");
+    void shouldDenyApprove() {
+        assertDenied(
+                authorizationService::canApprove,
+                Role.AUTHOR,
+                "Only REVIEWER or ADMIN can approve versions"
+        );
     }
 
     // ---------------- COMMENT ----------------
 
     @Test
-    void shouldAllowReviewerToComment() {
-        authorizationService.canComment(user(Role.REVIEWER));
+    void shouldAllowComment() {
+        assertAllowed(authorizationService::canComment, Role.REVIEWER, Role.ADMIN);
     }
 
     @Test
-    void shouldDenyAuthorToComment() {
-        assertThatThrownBy(() ->
-                authorizationService.canComment(user(Role.AUTHOR))
-        )
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("Only REVIEWER or ADMIN can add comments");
+    void shouldDenyComment() {
+        assertDenied(
+                authorizationService::canComment,
+                Role.AUTHOR,
+                "Only REVIEWER or ADMIN can add comments"
+        );
     }
 
     // ---------------- COMPARE ----------------
 
     @Test
-    void shouldAllowAllRolesToCompare() {
-        authorizationService.canCompare(user(Role.ADMIN));
-        authorizationService.canCompare(user(Role.AUTHOR));
-        authorizationService.canCompare(user(Role.REVIEWER));
+    void shouldAllowCompare() {
+        assertAllowed(authorizationService::canCompare,
+                Role.ADMIN, Role.AUTHOR, Role.REVIEWER);
+    }
+
+    @Test
+    void shouldDenyCompareWhenRoleIsNull() {
+        assertThatThrownBy(() ->
+                authorizationService.canCompare(user(null))
+        ).isInstanceOf(AccessDeniedException.class);
     }
 
     // ---------------- READ ----------------
 
     @Test
-    void shouldAllowReadWhenRoleExists() {
-        authorizationService.canRead(user(Role.ADMIN));
+    void shouldAllowRead() {
+        assertAllowed(authorizationService::canRead, Role.ADMIN);
     }
 
     @Test
@@ -105,5 +114,58 @@ class AuthorizationServiceTest {
         )
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("Invalid user role");
+    }
+
+    // --------------- CREATE VERSION ----------------
+
+    @Test
+    void shouldAllowCreateVersion() {
+        assertAllowed(authorizationService::canCreateVersion, Role.AUTHOR, Role.ADMIN);
+    }
+
+    @Test
+    void shouldDenyCreateVersion() {
+        assertDenied(authorizationService::canCreateVersion, Role.REVIEWER,
+                "Only AUTHOR or ADMIN can create versions");
+    }
+
+    // --------------- EDIT DRAFT ---------------
+
+    @Test
+    void shouldAllowEditDraft() {
+        assertAllowed(authorizationService::canEditDraft, Role.ADMIN, Role.AUTHOR);
+    }
+
+    @Test
+    void shouldDenyEditDraft() {
+        assertDenied(authorizationService::canEditDraft, Role.REVIEWER,
+                "Only AUTHOR or ADMIN can edit drafts");
+    }
+
+
+    // --------------- SUBMIT FOR REVIEW ---------------
+
+    @Test
+    void shouldAllowSubmit() {
+        assertAllowed(authorizationService::canSubmitForReview, Role.AUTHOR, Role.ADMIN);
+    }
+
+    @Test
+    void shouldDenySubmit() {
+        assertDenied(authorizationService::canSubmitForReview, Role.REVIEWER,
+                "Only AUTHOR or ADMIN can submit for review");
+    }
+
+    // --------------- REJECT ---------------
+
+    @Test
+    void shouldAllowReject() {
+        assertAllowed(authorizationService::canReject, Role.REVIEWER, Role.ADMIN);
+    }
+
+    @Test
+    void shouldDenyReject() {
+        assertDenied(authorizationService::canReject, Role.AUTHOR,
+                "Only REVIEWER or ADMIN can reject versions");
     }
 }
