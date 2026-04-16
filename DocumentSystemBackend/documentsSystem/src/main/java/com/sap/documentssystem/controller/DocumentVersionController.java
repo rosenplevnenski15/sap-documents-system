@@ -1,5 +1,6 @@
 package com.sap.documentssystem.controller;
 
+import com.sap.documentssystem.dto.VersionContentResponse;
 import com.sap.documentssystem.dto.VersionResponse;
 import com.sap.documentssystem.service.DocumentVersionService;
 import lombok.RequiredArgsConstructor;
@@ -83,6 +84,14 @@ public class DocumentVersionController {
                 .header("Content-Disposition", "attachment; filename=document.pdf")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    @GetMapping("/{versionId}/content")
+    @PreAuthorize("hasAnyRole('READER','AUTHOR','REVIEWER','ADMIN')")
+    public ResponseEntity<VersionContentResponse> getVersionContent(
+            @PathVariable UUID versionId
+    ) {
+        return ResponseEntity.ok(versionService.getVersionContent(versionId));
     }
 
 

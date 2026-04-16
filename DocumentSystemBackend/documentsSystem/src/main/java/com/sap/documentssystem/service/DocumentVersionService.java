@@ -3,6 +3,7 @@ package com.sap.documentssystem.service;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.element.Paragraph;
+import com.sap.documentssystem.dto.VersionContentResponse;
 import com.sap.documentssystem.dto.VersionResponse;
 import com.sap.documentssystem.dto.CompareResponse;
 import com.sap.documentssystem.exceptions.DocumentNotFoundException;
@@ -10,6 +11,7 @@ import com.sap.documentssystem.exceptions.VersionNotFoundException;
 import com.sap.documentssystem.exceptions.InvalidVersionStateException;
 import com.sap.documentssystem.exceptions.AccessDeniedException;
 import com.sap.documentssystem.exceptions.FileStorageException;
+import com.sap.documentssystem.mapper.VersionContentMapper;
 import com.sap.documentssystem.mapper.VersionMapper;
 import com.sap.documentssystem.entity.User;
 import com.sap.documentssystem.entity.Document;
@@ -465,6 +467,53 @@ public class DocumentVersionService {
         } catch (Exception ex) {
             throw new FileStorageException("Failed to export PDF");
         }
+    }
+
+    public VersionContentResponse getVersionContent(UUID versionId) {
+
+        User user = currentUserService.getCurrentUser();
+
+        DocumentVersion version = versionRepository.findFullById(versionId)
+                .orElseThrow(() -> new VersionNotFoundException("Version not found"));
+
+        Role role = user.getRole();
+
+        boolean canView = false;
+
+
+        if (role == Role.ADMIN) {
+            canView = true;
+        }
+
+
+        else if (role == Role.READER) {
+            canView = version.isActive() && version.getStatus() == VersionStatus.APPROVED;
+        }
+
+
+        else if (role == Role.AUTHOR) {
+            boolean isOwner = version.getCreatedBy().getId().equals(user.getId());
+
+            canView =
+                    version.isActive()
+                            || isOwner;
+        }
+
+
+        else if (role == Role.REVIEWER) {
+            canView =
+                    version.isActive()
+                            || version.getStatus() == VersionStatus.IN_REVIEW;
+        }
+
+        if (!canView) {
+            throw new AccessDeniedException("You do not have access to this version");
+        }
+
+
+        String content = s3Service.downloadFileAsText(version.getS3Url());
+
+        return VersionContentMapper.toResponse(version, content);
     }
 
 }
