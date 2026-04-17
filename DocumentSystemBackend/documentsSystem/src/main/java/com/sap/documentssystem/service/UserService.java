@@ -121,4 +121,31 @@ public class UserService {
                 .map(MapUser::mapUser)
                 .toList();
     }
+
+    @Transactional
+    public void activateUser(UUID userId) {
+
+        User admin = currentUserService.getCurrentUser();
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        if (user.isActive()) {
+            throw new IllegalArgumentException("User is already active");
+        }
+
+        user.setActive(true);
+
+        auditLogService.log(
+                admin,
+                AuditAction.USER_ACTIVATED,
+                "USER",
+                userId,
+                Map.of(
+                        "targetUserId", userId,
+                        "targetUsername", user.getUsername(),
+                        "activatedBy", admin.getUsername()
+                )
+        );
+    }
 }

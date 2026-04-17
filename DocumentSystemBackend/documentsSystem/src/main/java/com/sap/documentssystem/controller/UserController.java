@@ -55,4 +55,15 @@ public class UserController {
     public ResponseEntity<List<UserDto>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
+
+    @PutMapping("/{userId}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> activateUser(@PathVariable UUID userId) {
+        userService.activateUser(userId);
+        return ResponseEntity.ok(
+                ApiResponse.builder()
+                        .message("User activated")
+                        .build()
+        );
+    }
 }
