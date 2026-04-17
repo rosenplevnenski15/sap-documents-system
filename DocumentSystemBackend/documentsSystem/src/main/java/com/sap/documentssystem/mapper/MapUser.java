@@ -9,6 +9,7 @@ public class MapUser {
                 .id(user.getId())
                 .username(user.getUsername())
                 .role(user.getRole().name())
+                .isActive(user.isActive())
                 .build();
     }
 }
