@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  color: #0f172a;
+  background-color: #f8fafc;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at 10% 0%, #cffafe 0%, transparent 30%),
+    radial-gradient(circle at 90% 20%, #fde68a 0%, transparent 35%),
+    #f8fafc;
+}
+
+.ql-toolbar.ql-snow {
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ql-container.ql-snow {
+  border: none;
+  min-height: 180px;
+}
+
+@keyframes empty-state-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.empty-state-enter {
+  animation: empty-state-in 200ms ease-out forwards;
+}
+
+@keyframes page-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-route-enter {
+  animation: page-route-in 180ms ease-out;
+  will-change: opacity, transform;
+}
+
+@keyframes page-route-inner-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-route-enter .page-stagger-children > * {
+  opacity: 0;
+  animation: page-route-inner-in 180ms ease-out 60ms forwards;
+}
