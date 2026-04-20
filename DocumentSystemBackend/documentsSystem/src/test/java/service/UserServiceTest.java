@@ -1,5 +1,6 @@
 package service;
 
+import com.sap.documentssystem.dto.LoginRequest;
 import com.sap.documentssystem.dto.RegisterRequest;
 import com.sap.documentssystem.dto.UserDto;
 import com.sap.documentssystem.entity.Role;
@@ -49,9 +50,10 @@ class UserServiceTest {
     @Test
     void shouldRegisterUserSuccessfully() {
 
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("test");
-        request.setPassword("pass");
+        RegisterRequest request = RegisterRequest.builder()
+                .username("reader_deni")
+                .password("reasDeshjj@143")
+                .build();
 
         when(userRepository.existsByUsername("test")).thenReturn(false);
         when(passwordEncoder.encode("pass")).thenReturn("encoded");
@@ -72,10 +74,11 @@ class UserServiceTest {
     @Test
     void shouldThrowWhenUserAlreadyExists() {
 
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("test");
+        RegisterRequest request = RegisterRequest.builder()
+                .username("reader_deni")
+                .build();
 
-        when(userRepository.existsByUsername("test")).thenReturn(true);
+        when(userRepository.existsByUsername("reader_deni")).thenReturn(true);
 
         assertThatThrownBy(() -> userService.register(request))
                 .isInstanceOf(UserAlreadyExistsException.class);

@@ -40,9 +40,10 @@ public class AuthServiceTest {
     void shouldLoginSuccessfully() {
 
         // GIVEN
-        LoginRequest request = new LoginRequest();
-        request.setUsername("john");
-        request.setPassword("1234");
+        LoginRequest request = LoginRequest.builder()
+                .username("john12")
+                .password("1234Sjuni@")
+                .build();
 
         User user = new User();
         user.setId(UUID.randomUUID());
