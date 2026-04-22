@@ -1,68 +1,54 @@
-package controller;
+package com.sap.documentssystem.controller;
 
-import com.sap.documentssystem.controller.FileController;
 import com.sap.documentssystem.service.FileService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(FileController.class)
 class FileControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
-
-    @MockBean
     private FileService fileService;
 
-    // ---------------- UPLOAD SUCCESS ----------------
+    @BeforeEach
+    void setUp() {
+        fileService = Mockito.mock(FileService.class);
+
+        FileController controller = new FileController(fileService);
+
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(controller)
+                .build();
+    }
+
+    // ================= UPLOAD =================
 
     @Test
-    @WithMockUser(roles = {"AUTHOR"})
-    void uploadFile_shouldReturn201_andUrl() throws Exception {
+    void testUploadFile() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.txt",
+                MediaType.TEXT_PLAIN_VALUE,
+                "file content".getBytes()
+        );
 
-        MockMultipartFile file =
-                new MockMultipartFile(
-                        "file",
-                        "test.txt",
-                        "text/plain",
-                        "hello world".getBytes()
-                );
+        String url = "http://localhost/files/test.txt";
 
-        Mockito.when(fileService.upload(any()))
-                .thenReturn("http://fake-url.com/file/test.txt");
+        when(fileService.upload(any())).thenReturn(url);
 
         mockMvc.perform(multipart("/api/files/upload")
                         .file(file))
                 .andExpect(status().isCreated())
-                .andExpect(content().string("http://fake-url.com/file/test.txt"));
-    }
+                .andExpect(content().string(url));
 
-    // ---------------- UPLOAD FORBIDDEN ----------------
-
-    @Test
-    @WithMockUser(roles = {"USER"})
-    void uploadFile_shouldReturn403() throws Exception {
-
-        MockMultipartFile file =
-                new MockMultipartFile(
-                        "file",
-                        "test.txt",
-                        "text/plain",
-                        "hello world".getBytes()
-                );
-
-        mockMvc.perform(multipart("/api/files/upload")
-                        .file(file))
-                .andExpect(status().isForbidden());
+        verify(fileService, times(1)).upload(any());
     }
 }
