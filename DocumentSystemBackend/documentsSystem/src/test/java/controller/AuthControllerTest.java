@@ -1,127 +1,171 @@
-package controller;
-import com.sap.documentssystem.controller.AuthController;
-import com.sap.documentssystem.dto.LoginRequest;
-import com.sap.documentssystem.dto.RegisterRequest;
+package com.sap.documentssystem.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sap.documentssystem.dto.*;
 import com.sap.documentssystem.service.AuthService;
 import com.sap.documentssystem.service.UserService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.mockito.Mockito;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import static org.mockito.Mockito.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(AuthController.class)
-@AutoConfigureMockMvc(addFilters = false)
-@ContextConfiguration(classes = com.sap.documentssystem.DocumentsSystemApplication.class)
 class AuthControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
     private AuthService authService;
-
-    @MockBean
     private UserService userService;
 
-    // ---------------- LOGIN ----------------
+    private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUp() {
+        authService = Mockito.mock(AuthService.class);
+        userService = Mockito.mock(UserService.class);
+
+        AuthController controller = new AuthController(authService, userService);
+
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(controller)
+                .setValidator(validator)
+                .build();
+
+        objectMapper = new ObjectMapper();
+    }
+
+    // ================= LOGIN =================
+
     @Test
-    void shouldLoginSuccessfully() throws Exception {
+    void testLogin_valid() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .username("test")
+                .password("Password123!") // валидна
+                .build();
 
-        when(authService.login(any(LoginRequest.class)))
-                .thenAnswer(invocation -> {
-                    var res = mock(com.sap.documentssystem.dto.LoginResponse.class);
-                    when(res.getAccessToken()).thenReturn("accessToken");
-                    when(res.getRefreshToken()).thenReturn("refreshToken");
-                    return res;
-                });
+        LoginResponse response = LoginResponse.builder()
+                .accessToken("access-token")
+                .refreshToken("refresh-token")
+                .build();
 
-        String json = """
-        {
-          "username": "user",
-          "password": "Password1!"
-        }
-        """;
+        when(authService.login(any())).thenReturn(response);
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").value("accessToken"))
-                .andExpect(jsonPath("$.refreshToken").value("refreshToken"));
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-token"));
 
-        verify(authService).login(any(LoginRequest.class));
+        verify(authService, times(1)).login(any());
     }
 
-    // ---------------- REGISTER ----------------
     @Test
-    void shouldRegisterSuccessfully() throws Exception {
+    void testLogin_invalidPassword() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .username("test")
+                .password("pass")
+                .build();
 
-        doNothing().when(userService).register(any(RegisterRequest.class));
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
 
-        String json = """
-        {
-          "username": "user",
-          "password": "Password1!",
-          "email": "email@test.com"
-        }
-        """;
+        verify(authService, never()).login(any());
+    }
+
+    // ================= REGISTER =================
+
+    @Test
+    void testRegister_valid() throws Exception {
+        RegisterRequest request = RegisterRequest.builder()
+                .username("test")
+                .password("Password123!")
+                .build();
+
+        doNothing().when(userService).register(any());
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("User registered"));
 
-        verify(userService).register(any(RegisterRequest.class));
+        verify(userService, times(1)).register(any());
     }
 
-    // ---------------- REFRESH ----------------
     @Test
-    void shouldRefreshTokenSuccessfully() throws Exception {
+    void testRegister_invalidPassword() throws Exception {
+        RegisterRequest request = RegisterRequest.builder()
+                .username("test")
+                .password("123")
+                .build();
 
-        when(authService.refreshToken(anyString()))
-                .thenAnswer(invocation -> {
-                    var res = mock(com.sap.documentssystem.dto.LoginResponse.class);
-                    when(res.getAccessToken()).thenReturn("newAccess");
-                    when(res.getRefreshToken()).thenReturn("newRefresh");
-                    return res;
-                });
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
 
-        String json = """
-        {
-          "refreshToken": "someToken"
-        }
-        """;
+        verify(userService, never()).register(any());
+    }
+
+    // ================= REFRESH =================
+
+    @Test
+    void testRefresh_valid() throws Exception {
+        RefreshTokenRequest request = new RefreshTokenRequest();
+        request.setRefreshToken("refresh-token");
+
+        LoginResponse response = LoginResponse.builder()
+                .accessToken("new-access-token")
+                .refreshToken("new-refresh-token")
+                .build();
+
+        when(authService.refreshToken("refresh-token")).thenReturn(response);
 
         mockMvc.perform(post("/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").value("newAccess"))
-                .andExpect(jsonPath("$.refreshToken").value("newRefresh"));
+                .andExpect(jsonPath("$.accessToken").value("new-access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("new-refresh-token"));
 
-        verify(authService).refreshToken(anyString());
+        verify(authService, times(1)).refreshToken("refresh-token");
     }
 
-    // ---------------- LOGOUT ----------------
     @Test
-    void shouldLogoutSuccessfully() throws Exception {
+    void testRefresh_invalid_emptyToken() throws Exception {
+        RefreshTokenRequest request = new RefreshTokenRequest();
+        request.setRefreshToken("");
 
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(authService, never()).refreshToken(any());
+    }
+
+    // ================= LOGOUT =================
+
+    @Test
+    void testLogout() throws Exception {
         doNothing().when(authService).logout();
 
         mockMvc.perform(post("/api/auth/logout"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Logged out successfully"));
 
-        verify(authService).logout();
+        verify(authService, times(1)).logout();
     }
 }
