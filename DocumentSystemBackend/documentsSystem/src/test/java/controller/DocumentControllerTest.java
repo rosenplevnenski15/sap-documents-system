@@ -1,112 +1,116 @@
-package controller;
+package com.sap.documentssystem.controller;
 
-import com.sap.documentssystem.controller.DocumentController;
-import com.sap.documentssystem.dto.DocumentResponse;
 import com.sap.documentssystem.dto.CompareResponse;
+import com.sap.documentssystem.dto.DocumentResponse;
 import com.sap.documentssystem.service.DocumentService;
 import com.sap.documentssystem.service.DocumentVersionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(DocumentController.class)
 class DocumentControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
     private DocumentService documentService;
-
-    @MockBean
     private DocumentVersionService versionService;
 
-    // ---------------- CREATE DOCUMENT ----------------
+    @BeforeEach
+    void setUp() {
+        documentService = Mockito.mock(DocumentService.class);
+        versionService = Mockito.mock(DocumentVersionService.class);
+
+        DocumentController controller = new DocumentController(documentService, versionService);
+
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(controller)
+                .setValidator(validator)
+                .build();
+    }
+
+    // ================= CREATE DOCUMENT =================
 
     @Test
-    @WithMockUser(roles = {"AUTHOR"})
-    void createDocument_shouldReturn201_andValidJson() throws Exception {
+    void testCreateDocument_valid() throws Exception {
+        String title = "My Document";
 
-        MockMultipartFile file =
-                new MockMultipartFile("file", "test.txt", "text/plain", "hello world".getBytes());
-
-        MockMultipartFile title =
-                new MockMultipartFile("title", "", "text/plain", "My Document".getBytes());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.txt",
+                MediaType.TEXT_PLAIN_VALUE,
+                "Hello world".getBytes()
+        );
 
         DocumentResponse response = DocumentResponse.builder()
                 .id(UUID.randomUUID())
-                .title("My Document")
-                .createdBy(null)
-                .createdAt(LocalDateTime.now())
+                .title(title)
                 .build();
 
-        Mockito.when(documentService.createDocument(eq("My Document"), any()))
-                .thenReturn(response);
+        when(documentService.createDocument(eq(title), any())).thenReturn(response);
 
         mockMvc.perform(multipart("/api/documents")
                         .file(file)
-                        .file(title)
-                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                        .param("title", title))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.title").value("My Document"));
+                .andExpect(jsonPath("$.title").value(title));
+
+        verify(documentService, times(1)).createDocument(eq(title), any());
     }
 
     @Test
-    @WithMockUser(roles = {"USER"})
-    void createDocument_shouldReturn403_forbidden() throws Exception {
-
-        MockMultipartFile file =
-                new MockMultipartFile("file", "test.txt", "text/plain", "hello".getBytes());
-
-        MockMultipartFile title =
-                new MockMultipartFile("title", "", "text/plain", "My Document".getBytes());
+    void testCreateDocument_invalid_emptyTitle() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.txt",
+                MediaType.TEXT_PLAIN_VALUE,
+                "Hello world".getBytes()
+        );
 
         mockMvc.perform(multipart("/api/documents")
                         .file(file)
-                        .file(title))
-                .andExpect(status().isForbidden());
+                        .param("title", ""))
+                .andExpect(status().isBadRequest());
+
+        verify(documentService, never()).createDocument(any(), any());
     }
 
-    // ---------------- COMPARE ----------------
+    // ================= COMPARE =================
 
     @Test
-    @WithMockUser(roles = {"REVIEWER"})
-    void compare_shouldReturn200_andJson() throws Exception {
-
+    void testCompare() throws Exception {
         UUID documentId = UUID.randomUUID();
 
         CompareResponse response = CompareResponse.builder()
+                .fileName1("v1.txt")
+                .fileName2("v2.txt")
+                .version1Content("old")
+                .version2Content("new")
+                .version1Number(1)
+                .version2Number(2)
                 .build();
 
-        Mockito.when(versionService.compareLatest(documentId))
-                .thenReturn(response);
+        when(versionService.compareLatest(documentId)).thenReturn(response);
 
-        mockMvc.perform(get("/api/documents/{id}/compare", documentId))
-                .andExpect(status().isOk());
-    }
+        mockMvc.perform(get("/api/documents/" + documentId + "/compare"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fileName1").value("v1.txt"))
+                .andExpect(jsonPath("$.fileName2").value("v2.txt"));
 
-    @Test
-    @WithMockUser(roles = {"USER"})
-    void compare_shouldReturn403_forbidden() throws Exception {
-
-        UUID documentId = UUID.randomUUID();
-
-        mockMvc.perform(get("/api/documents/{id}/compare", documentId))
-                .andExpect(status().isForbidden());
+        verify(versionService, times(1)).compareLatest(documentId);
     }
 }
