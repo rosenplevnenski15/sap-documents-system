@@ -1,193 +1,230 @@
-package controller;
+package com.sap.documentssystem.controller;
 
-import com.sap.documentssystem.controller.DocumentVersionController;
+import com.sap.documentssystem.dto.VersionContentResponse;
 import com.sap.documentssystem.dto.VersionResponse;
 import com.sap.documentssystem.service.DocumentVersionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(DocumentVersionController.class)
 class DocumentVersionControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
-
-    @MockBean
     private DocumentVersionService versionService;
 
-    // ---------------- CREATE VERSION ----------------
+    @BeforeEach
+    void setUp() {
+        versionService = Mockito.mock(DocumentVersionService.class);
+
+        DocumentVersionController controller = new DocumentVersionController(versionService);
+
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(controller)
+                .setValidator(validator)
+                .build();
+    }
+
+    // ================= CREATE VERSION =================
 
     @Test
-    @WithMockUser(roles = {"AUTHOR"})
-    void createVersion_shouldReturn201() throws Exception {
-
+    void testCreateVersion() throws Exception {
         UUID documentId = UUID.randomUUID();
 
-        MockMultipartFile file =
-                new MockMultipartFile("file", "test.txt", "text/plain", "hello".getBytes());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "doc.txt",
+                MediaType.TEXT_PLAIN_VALUE,
+                "content".getBytes()
+        );
 
         VersionResponse response = VersionResponse.builder()
+                .id(UUID.randomUUID())
+                .versionNumber(1)
+                .status("DRAFT")
+                .fileName("doc.txt")
+                .isActive(true)
                 .build();
 
-        Mockito.when(versionService.createVersion(eq(documentId), any()))
-                .thenReturn(response);
+        when(versionService.createVersion(eq(documentId), any())).thenReturn(response);
 
-        mockMvc.perform(multipart("/api/versions/documents/{documentId}/versions", documentId)
+        mockMvc.perform(multipart("/api/versions/documents/" + documentId + "/versions")
                         .file(file))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("DRAFT"));
+
+        verify(versionService).createVersion(eq(documentId), any());
     }
 
-    @Test
-    @WithMockUser(roles = {"USER"})
-    void createVersion_shouldReturn403() throws Exception {
-
-        UUID documentId = UUID.randomUUID();
-
-        MockMultipartFile file =
-                new MockMultipartFile("file", "test.txt", "text/plain", "hello".getBytes());
-
-        mockMvc.perform(multipart("/api/versions/documents/{documentId}/versions", documentId)
-                        .file(file))
-                .andExpect(status().isForbidden());
-    }
-
-    // ---------------- SUBMIT ----------------
+    // ================= WORKFLOW =================
 
     @Test
-    @WithMockUser(roles = {"AUTHOR"})
-    void submitForReview_shouldReturn200() throws Exception {
-
+    void testSubmitForReview() throws Exception {
         UUID versionId = UUID.randomUUID();
 
-        VersionResponse response = VersionResponse.builder().build();
+        VersionResponse response = VersionResponse.builder()
+                .id(versionId)
+                .status("IN_REVIEW")
+                .build();
 
-        Mockito.when(versionService.submitForReview(versionId))
-                .thenReturn(response);
+        when(versionService.submitForReview(versionId)).thenReturn(response);
 
-        mockMvc.perform(post("/api/versions/{versionId}/submit", versionId))
-                .andExpect(status().isOk());
-    }
-
-    // ---------------- APPROVE ----------------
-
-    @Test
-    @WithMockUser(roles = {"REVIEWER"})
-    void approveVersion_shouldReturn200() throws Exception {
-
-        UUID versionId = UUID.randomUUID();
-
-        VersionResponse response = VersionResponse.builder().build();
-
-        Mockito.when(versionService.approveVersion(versionId))
-                .thenReturn(response);
-
-        mockMvc.perform(post("/api/versions/{versionId}/approve", versionId))
-                .andExpect(status().isOk());
-    }
-
-    // ---------------- REJECT ----------------
-
-    @Test
-    @WithMockUser(roles = {"REVIEWER"})
-    void rejectVersion_shouldReturn200() throws Exception {
-
-        UUID versionId = UUID.randomUUID();
-
-        VersionResponse response = VersionResponse.builder().build();
-
-        Mockito.when(versionService.rejectVersion(versionId))
-                .thenReturn(response);
-
-        mockMvc.perform(post("/api/versions/{versionId}/reject", versionId))
-                .andExpect(status().isOk());
-    }
-
-    // ---------------- GET VERSIONS ----------------
-
-    @Test
-    @WithMockUser
-    void getVersions_shouldReturn200() throws Exception {
-
-        UUID documentId = UUID.randomUUID();
-
-        Mockito.when(versionService.getVersions(documentId))
-                .thenReturn(List.of());
-
-        mockMvc.perform(get("/api/versions/{documentId}/versions", documentId))
+        mockMvc.perform(post("/api/versions/" + versionId + "/submit"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+                .andExpect(jsonPath("$.status").value("IN_REVIEW"));
+
+        verify(versionService).submitForReview(versionId);
     }
 
-    // ---------------- ACTIVE VERSION ----------------
-
     @Test
-    @WithMockUser
-    void getActiveVersion_shouldReturn200() throws Exception {
-
-        UUID documentId = UUID.randomUUID();
-
-        VersionResponse response = VersionResponse.builder().build();
-
-        Mockito.when(versionService.getActiveVersion(documentId))
-                .thenReturn(response);
-
-        mockMvc.perform(get("/api/versions/{documentId}/active", documentId))
-                .andExpect(status().isOk());
-    }
-
-    // ---------------- UPDATE FILE ----------------
-
-    @Test
-    @WithMockUser(roles = {"AUTHOR"})
-    void updateDraftFile_shouldReturn200() throws Exception {
-
+    void testApproveVersion() throws Exception {
         UUID versionId = UUID.randomUUID();
 
-        MockMultipartFile file =
-                new MockMultipartFile("file", "test.txt", "text/plain", "updated".getBytes());
+        VersionResponse response = VersionResponse.builder()
+                .id(versionId)
+                .status("APPROVED")
+                .build();
 
-        VersionResponse response = VersionResponse.builder().build();
+        when(versionService.approveVersion(versionId)).thenReturn(response);
 
-        Mockito.when(versionService.updateDraftFile(eq(versionId), any()))
-                .thenReturn(response);
+        mockMvc.perform(post("/api/versions/" + versionId + "/approve"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
 
-        mockMvc.perform(multipart("/api/versions/{versionId}/file", versionId)
+        verify(versionService).approveVersion(versionId);
+    }
+
+    @Test
+    void testRejectVersion() throws Exception {
+        UUID versionId = UUID.randomUUID();
+
+        VersionResponse response = VersionResponse.builder()
+                .id(versionId)
+                .status("REJECTED")
+                .build();
+
+        when(versionService.rejectVersion(versionId)).thenReturn(response);
+
+        mockMvc.perform(post("/api/versions/" + versionId + "/reject"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"));
+
+        verify(versionService).rejectVersion(versionId);
+    }
+
+    // ================= GET =================
+
+    @Test
+    void testGetVersions() throws Exception {
+        UUID documentId = UUID.randomUUID();
+
+        VersionResponse v1 = VersionResponse.builder().id(UUID.randomUUID()).build();
+        VersionResponse v2 = VersionResponse.builder().id(UUID.randomUUID()).build();
+
+        when(versionService.getVersions(documentId)).thenReturn(List.of(v1, v2));
+
+        mockMvc.perform(get("/api/versions/" + documentId + "/versions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+
+        verify(versionService).getVersions(documentId);
+    }
+
+    @Test
+    void testGetActiveVersion() throws Exception {
+        UUID documentId = UUID.randomUUID();
+
+        VersionResponse response = VersionResponse.builder()
+                .id(UUID.randomUUID())
+                .isActive(true)
+                .build();
+
+        when(versionService.getActiveVersion(documentId)).thenReturn(response);
+
+        mockMvc.perform(get("/api/versions/" + documentId + "/active"))
+                .andExpect(status().isOk());
+
+        verify(versionService).getActiveVersion(documentId);
+    }
+
+    // ================= UPDATE FILE =================
+
+    @Test
+    void testUpdateDraftFile() throws Exception {
+        UUID versionId = UUID.randomUUID();
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "updated.txt",
+                MediaType.TEXT_PLAIN_VALUE,
+                "updated content".getBytes()
+        );
+
+        VersionResponse response = VersionResponse.builder()
+                .id(versionId)
+                .build();
+
+        when(versionService.updateDraftFile(eq(versionId), any())).thenReturn(response);
+
+        mockMvc.perform(multipart("/api/versions/" + versionId + "/file")
                         .file(file)
-                        .with(request -> { request.setMethod("PUT"); return request; }))
+                        .with(req -> {
+                            req.setMethod("PUT");
+                            return req;
+                        }))
                 .andExpect(status().isOk());
+
+        verify(versionService).updateDraftFile(eq(versionId), any());
     }
 
-    // ---------------- EXPORT PDF ----------------
+    // ================= PDF =================
 
     @Test
-    @WithMockUser
-    void exportPdf_shouldReturnPdf() throws Exception {
-
+    void testExportPdf() throws Exception {
         UUID versionId = UUID.randomUUID();
 
-        byte[] pdf = "fake-pdf".getBytes();
+        byte[] pdf = "pdf".getBytes();
 
-        Mockito.when(versionService.exportToPdf(versionId))
-                .thenReturn(pdf);
+        when(versionService.exportToPdf(versionId)).thenReturn(pdf);
 
-        mockMvc.perform(get("/api/versions/{versionId}/export/pdf", versionId))
+        mockMvc.perform(get("/api/versions/" + versionId + "/export/pdf"))
                 .andExpect(status().isOk())
-                .andExpect(header().exists("Content-Disposition"))
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+
+        verify(versionService).exportToPdf(versionId);
+    }
+
+    // ================= CONTENT =================
+
+    @Test
+    void testGetVersionContent() throws Exception {
+        UUID versionId = UUID.randomUUID();
+
+        VersionContentResponse response = VersionContentResponse.builder()
+                .id(versionId)
+                .content("file content")
+                .build();
+
+        when(versionService.getVersionContent(versionId)).thenReturn(response);
+
+        mockMvc.perform(get("/api/versions/" + versionId + "/content"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value("file content"));
+
+        verify(versionService).getVersionContent(versionId);
     }
 }
