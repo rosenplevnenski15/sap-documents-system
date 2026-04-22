@@ -1,4 +1,4 @@
-package service;
+ package service;
 
 import com.sap.documentssystem.dto.LoginRequest;
 import com.sap.documentssystem.dto.LoginResponse;
@@ -9,26 +9,36 @@ import com.sap.documentssystem.security.JwtService;
 import com.sap.documentssystem.service.AuditLogService;
 import com.sap.documentssystem.service.AuthService;
 import com.sap.documentssystem.service.CurrentUserService;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.junit.jupiter.api.Test;
-import static org.mockito.Mockito.*;
-import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Optional;
-import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
+
 @ExtendWith(MockitoExtension.class)
-public class AuthServiceTest {
+class AuthServiceTest {
+
     @Mock
     private JwtService jwtService;
-    @Mock private UserRepository userRepository;
-    @Mock private AuthenticationManager authenticationManager;
-    @Mock private AuditLogService auditLogService;
-    @Mock private CurrentUserService currentUserService;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private AuthenticationManager authenticationManager;
+
+    @Mock
+    private AuditLogService auditLogService;
+
+    @Mock
+    private CurrentUserService currentUserService;
 
     @InjectMocks
     private AuthService authService;
@@ -41,15 +51,15 @@ public class AuthServiceTest {
 
         // GIVEN
         LoginRequest request = LoginRequest.builder()
-                .username("john12")
-                .password("1234Sjuni@")
+                .username("admin_rosen")
+                .password("adminRosen123@")
                 .build();
 
         User user = new User();
         user.setId(UUID.randomUUID());
-        user.setUsername("john");
+        user.setUsername("admin_rosen"); // ✅ FIX
 
-        when(userRepository.findByUsername("john"))
+        when(userRepository.findByUsername("admin_rosen"))
                 .thenReturn(Optional.of(user));
 
         when(jwtService.generateToken(user))
@@ -68,24 +78,24 @@ public class AuthServiceTest {
         assertThat(response.getAccessToken()).isEqualTo("access-token");
         assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
 
-        verify(authenticationManager)
-                .authenticate(any());
+        verify(authenticationManager).authenticate(any());
 
-        verify(auditLogService)
-                .log(
-                        eq(user),
-                        eq(AuditAction.LOGIN),
-                        eq("USER"),
-                        eq(user.getId()),
-                        anyMap()
-                );
+        verify(auditLogService).log(
+                eq(user),
+                eq(AuditAction.LOGIN),
+                eq("USER"),
+                eq(user.getId()),
+                anyMap()
+        );
     }
+
 
     // --------------- TEST: refreshToken() ---------------
 
     @Test
     void shouldRefreshTokenSuccessfully() {
 
+        // GIVEN
         String refreshToken = "refresh-token";
 
         User user = new User();
@@ -103,17 +113,21 @@ public class AuthServiceTest {
         when(jwtService.getExpiration())
                 .thenReturn(3600000L);
 
+        // WHEN
         LoginResponse response = authService.refreshToken(refreshToken);
 
+        // THEN
         assertThat(response.getAccessToken()).isEqualTo("new-access-token");
         assertThat(response.getRefreshToken()).isEqualTo(refreshToken);
     }
 
-    // --------------- TEST: logout() ----------
+
+    // --------------- TEST: logout() ---------------
 
     @Test
     void shouldLogoutSuccessfully() {
 
+        // GIVEN
         User user = new User();
         user.setId(UUID.randomUUID());
         user.setUsername("john");
@@ -121,8 +135,10 @@ public class AuthServiceTest {
         when(currentUserService.getCurrentUser())
                 .thenReturn(user);
 
+        // WHEN
         authService.logout();
 
+        // THEN
         verify(auditLogService).log(
                 eq(user),
                 eq(AuditAction.LOGOUT),

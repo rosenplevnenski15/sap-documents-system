@@ -50,26 +50,33 @@ class UserServiceTest {
     @Test
     void shouldRegisterUserSuccessfully() {
 
+        // GIVEN
         RegisterRequest request = RegisterRequest.builder()
                 .username("reader_deni")
                 .password("reasDeshjj@143")
                 .build();
 
-        when(userRepository.existsByUsername("test")).thenReturn(false);
-        when(passwordEncoder.encode("pass")).thenReturn("encoded");
+        when(userRepository.existsByUsername("reader_deni"))
+                .thenReturn(false);
+
+        when(passwordEncoder.encode("reasDeshjj@143"))
+                .thenReturn("encoded-password");
 
         when(userRepository.save(any(User.class)))
-                .thenAnswer(inv -> {
-                    User u = inv.getArgument(0);
+                .thenAnswer(invocation -> {
+                    User u = invocation.getArgument(0);
                     u.setId(UUID.randomUUID());
                     return u;
                 });
 
+        // WHEN
         userService.register(request);
 
+        // THEN
         verify(userRepository).save(any(User.class));
         verify(auditLogService).log(any(), any(), anyString(), any(), anyMap());
     }
+
 
     @Test
     void shouldThrowWhenUserAlreadyExists() {
